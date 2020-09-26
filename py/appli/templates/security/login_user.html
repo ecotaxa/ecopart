@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% block body %}
+	<div class="row" id="content">
+		<div class="col-sm-6" style="margin-left: 5px">
+
+{% from "security/_custommacros.html" import render_field_with_errors, render_field,display_field_errors %}
+
+  <p>Ecotaxa Version : {{   GetEcotaxaVersionText() }}</p>
+  <h3>Registration</h3>
+      <br><br>
+      <a href='/register' class="btn btn-success btn-lg"><span class="fas fa-user-plus"></span>&nbsp;&nbsp;Create your EcoTaxa account</a>
+
+				<p style="margin-top: 20px;font-size: small;">In case of registration problem or if you want to avoid Google reCaptcha on Account creation page for privacy reasons
+          , please send an email to one the following persons in order to proceed to a manual account creation</p>
+				<ul style="font-size: small;">{{ GetManagerList('Ecotaxa : Account issue')|safe }}</ul>
+				
+    <a href="/privacy">Our privacy statement</a>
+		</div>
+
+		<div class="col-sm-5">
+
+    <form class="form-signin" action="{{ url_for_security('login') }}" method="POST" name="login_user_form">
+  {{ login_user_form.hidden_tag() }}
+
+				<h3>Log in</h3>
+
+				<div class="form-group">
+        <label for="inputEmail" class="sr-only">Email address</label>
+        <input name="email" id="email" class="form-control" placeholder="Email address" required autofocus>
+        {{ display_field_errors(login_user_form.email) }}
+				</div>
+			
+				<div class="form-group">
+        <label for="inputPassword" class="sr-only">Password</label>
+        <input type="password" name="password" id="password" class="form-control" placeholder="Password" required>
+					{{ display_field_errors(login_user_form.password) }}
+				</div>
+
+        <div class="checkbox">
+          <label>
+            <input  id="remember" name="remember" type="checkbox" value="y"> Remember me
+          </label>
+        </div>
+					
+        <button class="btn btn-lg btn-primary btn-block" type="submit"><span class="fas fa-check"></span>&nbsp;&nbsp; Log in</button>
+{#  {{ render_field(login_user_form.next) }}#}
+
+</form>
+{% include "security/_menu.html" %}
+
+
+		</div>
+	</div> <!-- /content -->
+{% endblock %}

@@ -1,0 +1,57 @@
+
+<script>
+function FormatTaxoItem(t) {
+  if (t.pr==1)
+    return $("<u>"+ XSSStrEscape(t.text)+"</u>")
+  else return t.text;
+}
+function EnableSelect2Taxolb() {
+  if((typeof(Restoretaxolbid)!=='undefined')&&(typeof(Restoretaxolbid)!=='')){
+    var NewOption=$('<option></option').val(Restoretaxolbid).text(Restoretaxolbtxt);
+    NewOption.appendTo('#taxolbanno');
+    Restoretaxolbid=undefined;
+  }
+    $(".taxolb").select2({
+        ajax: {
+            url: "/search/taxo",
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {  return { q: params.term {% if g.Projid %} ,projid:{{ g.Projid }} {% endif %} };  },
+            processResults: function (data, page) { return { results: data};  },
+            cache: true
+        },
+        templateResult: FormatTaxoItem,
+        dropdownCssClass: "width240 taxopopup",
+        language: {
+           noResults: function(){
+               return $("<span>No recent/result found. <a href=\"javascript:PostDynForm('/taxo/browse/?fromprj={{ g.Projid }}',{updatestat:'Y'})\" >Create category</a></span>");
+           }
+       }
+    }); // Select2 Ajax
+}
+$(document).ready(function() {
+    EnableSelect2Taxolb();
+
+    $('#TaxoModal').on('show.bs.modal', function (e) {
+        var button = $(e.relatedTarget); // Button that triggered the modal
+        var targetid = button.data('mytargetid');
+         $("#TaxoModalBody").html("Loading...");
+         $("#TaxoModalBody").load("/search/taxotree?target="+targetid);
+      });
+    }); // Ready
+ </script>
+
+<!-- Modal -->
+<div class="modal " id="TaxoModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="ModalLabel">Taxonomy Tree</h4>
+      </div>
+      <div class="modal-body">
+        <div id="TaxoModalBody">...</div>
+      </div>
+    </div>
+  </div>
+</div>
