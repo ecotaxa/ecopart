@@ -39,7 +39,7 @@ manage.CreateDB(SkipConfirmation=True,UseExistingDatabase=True)
 with app.app_context():# Création d'un contexte pour utiliser les fonction GetAll,ExecSQL
     g.db = None
     logging.info("Import Taxonomy File")
-    SourceTaxoFile = realpath(join(HERE, "..", "data", "taxonomy.tsv"))
+    SourceTaxoFile = realpath(join(HERE, "..","..", "data", "taxonomy.tsv"))
     sql = "copy taxonomy(id, parent_id, name, id_source, display_name, lastupdate_datetime, id_instance, rename_to, source_url, source_desc, creator_email, creation_datetime, nbrobj, nbrobjcum) from '" + SourceTaxoFile + "'"
     database.ExecSQL(sql)
     logging.info("Taxonomy imported")
@@ -75,5 +75,5 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
     import gendb.UVP5FileMaker as UVP5FileMaker
 
     UVP5FileMaker.GenerateUVP5Folder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed"
-                                     ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load HDR"
-                                     ,DirName="tu1_uvp5hdr")
+                                     ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU"
+                                     ,DirName="tu1_uvp5bru")

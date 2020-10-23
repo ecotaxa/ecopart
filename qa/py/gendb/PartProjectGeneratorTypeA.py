@@ -47,6 +47,7 @@ class PartProjectGeneratorTypeA:
         for d in range(300):
             h = database.part_histopart_det()
             h.psampleid = Sample.psampleid
+            h.datetime=Sample.sampledate+timedelta(seconds=63*d)
             h.lineno = d
             h.depth = d * 5 + 2.5  # c'est des tranche de 5 m
             h.watervolume = Sample.acq_volimage*NbrImages

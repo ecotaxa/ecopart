@@ -29,7 +29,7 @@ def GenerateRawFileForSample(UvpSample):
     UvpSample.histobrutavailable=True
     db.session.commit()
 
-def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName):
+def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="bru"):
     with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL
         g.db = None
         part_project=part_projects.query.filter_by(ptitle=SrcProjectTitle).first()
@@ -38,7 +38,7 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName):
         make_transient(part_project)
         part_project.pprojid=None
         part_project.ptitle=TargetProjectTitle
-        part_project.rawfolder="qa/py/data/"+DirName
+        part_project.rawfolder="qa/data/"+DirName
         db.session.add(part_project)
         db.session.commit()
         m = re.search(R"([^_]+)_(.*)", DirName)
@@ -85,12 +85,15 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName):
                     print('Generate %s'%HDRFilePath)
                     write_config.write(hdr)
                 DatFilePath=HDRFolderPath / ("HDR%s"%filename+".dat")
-                BruFilePath = HDRFolderPath / ("HDR%s" % filename + ".bru")
+                BruFilePath = HDRFolderPath / ("HDR%s" % filename + "."+BRUFormat)
                 with DatFilePath.open('w',newline='') as DatFile,BruFilePath.open('w',newline='') as BruFile:
                     fieldnames="index;image;sensor data;nb blobs P-G;mean area P-G;mean grey P-G;nb blobs G;mean grey G".split(";")
                     wDat = csv.DictWriter(DatFile, delimiter=';', fieldnames=fieldnames )
                     wDat.writeheader()
-                    BruFile.write("index;	image;	blob;	area;	meangrey;	xcenter;	ycenter;\r\n")
+                    if BRUFormat=='bru1':
+                        BruFile.write("index;	blob;	area;	meangrey;	xcenter;	ycenter;\r\n")
+                    else:
+                        BruFile.write("index;	image;	blob;	area;	meangrey;	xcenter;	ycenter;\r\n")
                     for H in part_histopart_det.query.filter_by(psampleid=S.psampleid):
                         NbrImage =int(round (H.watervolume/S.acq_volimage))
                         for noimg in range(NbrImage):
@@ -109,10 +112,16 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName):
                             Area=int(calcpixelfromesd_aa_exp(ESDMm,S.acq_aa,S.acq_exp))
                             for i in range(Nbr):
                                 MeanGrey = 30 + (i%50)
-                                BruFile.write(" %s;\tImgClass%s;%s;\t%s;\t%s;500;500\r\n"%(H.lineno*NbrImage+(i%NbrImage)+1,classe,i+1,Area,MeanGrey))
+                                if BRUFormat == 'bru':
+                                    BruFile.write(" %s;\tImgClass%s;%s;\t%s;\t%s;500;500\r\n"%(
+                                        H.lineno*NbrImage+(i%NbrImage)+1,classe,i+1,Area,MeanGrey))
+                                else: # bru1
+                                    BruFile.write(" %s;\t%s;\t%s;\t%s;500;500\r\n" % (
+                                        H.lineno * NbrImage + (i % NbrImage) + 1,  i + 1, Area, MeanGrey))
 
 
 if __name__ == "__main__":
     GenerateUVP5Folder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed"
-                                     ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load HDR"
-                                     ,DirName="tu1_uvp5hdr")
+                                     ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU1"
+                                     ,DirName="tu1_uvp5bru1"
+                                     ,BRUFormat="bru1")
