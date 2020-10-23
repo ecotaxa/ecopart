@@ -122,6 +122,8 @@ class AsyncTask:
         # cmd=os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../runtask.py"))
         cmdfull = app.PythonExecutable + " " + os.path.normpath(
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../runtask.py " + str(self.task.id)))
+        if app.PythonExecutable=="PYTESTDRIVEN":
+            return # Lancé de façon synchrone par un script pytest
         app.logger.info("Start Task process : %s" % (cmdfull,))
         # os.spawnv(os.P_NOWAIT,  sys.executable, (sys.executable,cmd, str(self.task.id))) # Ne marche pas
         # system marche, mais c'est un appel bloquant donc on le met dans une thread separé

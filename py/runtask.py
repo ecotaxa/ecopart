@@ -34,17 +34,8 @@ def _tweak_stacks():
     else:
         return "".join(tb)
 
-if __name__ == '__main__':
-    task = None
-    taskid = -9999
+def RunTask(taskid,LogLevel=logging.INFO):
     try:
-        # print("%s %s"%(sys.argv,len(sys.argv)))
-        # print(os.getcwd())
-        # On verifie qu'il y a au moins un parametre, c'est le taskid
-        if len(sys.argv) == 1:
-            raise Exception("Parameter Missing, Task ID required :")
-        taskid = int(sys.argv[1])
-        # taskid=1
         # On se place dans le repertoire de travail
         workingdir = os.path.normpath(
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "temptask/task%06d" % (int(taskid))))
@@ -53,7 +44,7 @@ if __name__ == '__main__':
         LoggingFormat = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         logging.basicConfig(filename='TaskLog.txt', level=logging.INFO, format=LoggingFormat)
         logging_console = logging.StreamHandler()
-        logging_console.setLevel(logging.INFO)
+        logging_console.setLevel(LogLevel)
         logging_console.setFormatter(logging.Formatter(LoggingFormat))
         logging.getLogger('').addHandler(logging_console)
         with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL qui mémorisent
@@ -82,6 +73,21 @@ if __name__ == '__main__':
             task.task.progresspct = -1
             task.task.progressmsg = "Unhandled SubProcess Exception : " + str(sys.exc_info())
             db.session.commit()
+        raise
+
+
+
+if __name__ == '__main__':
+    task = None
+    taskid = -9999
+    try:
+        # print("%s %s"%(sys.argv,len(sys.argv)))
+        # print(os.getcwd())
+        # On verifie qu'il y a au moins un parametre, c'est le taskid
+        if len(sys.argv) == 1:
+            raise Exception("Parameter Missing, Task ID required :")
+        taskid = int(sys.argv[1])
+        # taskid=1
+        RunTask(taskid)
+    except Exception:
         logging.error("Unhandled SubProcess Exception \n%s", _tweak_stacks())
-
-
