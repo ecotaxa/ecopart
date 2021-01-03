@@ -255,6 +255,10 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, De
 
                 if organizedbydepth:
                     Partition =math.floor(depth)
+                    if dateheuretxt=='':
+                        dateheure =None
+                    else:
+                        dateheure = datetime.datetime.strptime(dateheuretxt, "%Y%m%d-%H%M%S")
                 else:
                     integrationtime=int(UvpSample.integrationtime)
                     if integrationtime<=0:
@@ -266,12 +270,15 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, De
                 if flash in ('0','1'):
                     if Partition not in SegmentedData[flash]:
                         if organizedbydepth:
-                            SegmentedData[flash][Partition]={'depth':Partition,'imgcount':0,'area':{}} # 'time':dateheuretxt,
+                            SegmentedData[flash][Partition]={'depth':Partition,'imgcount':0,'area':{},'timestamp':0} # 'time':dateheuretxt,
                         else:
                             SegmentedData[flash][Partition] = {'depth': 0, 'time': Partition, 'imgcount': 0, 'area': {}}
                     SegmentedData[flash][Partition]['imgcount']+=1
                     if organizedbytime:
                         SegmentedData[flash][Partition]['depth']+=depth # on va calculer la profondeur moyenne, donc on fait la somme
+                    else:
+                        if dateheure:
+                            SegmentedData[flash][Partition]['timestamp'] += dateheure.timestamp()  # on va calculer l'heure' moyenne, donc on fait la somme
                     for data1taille in data:
                         area=int(data1taille[0])
                         if area not in SegmentedData[flash][Partition]['area']:
@@ -299,21 +306,26 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, De
             DetHistoFile = GetPathForRawHistoFile(UvpSample.psampleid,flash)
             with bz2.open(DetHistoFile, 'wt', newline='') as f:
                 cf = csv.writer(f, delimiter='\t')
-                HeaderColsName=["depth", "imgcount", "area", "nbr", "greylimit1", "greylimit2", "greylimit3"]
-                if organizedbytime:
-                    HeaderColsName.append("datetime")
+                HeaderColsName=["depth", "imgcount", "area", "nbr", "greylimit1", "greylimit2", "greylimit3","datetime"]
+                # if organizedbytime:
+                #     HeaderColsName.append("datetime")
                 cf.writerow(HeaderColsName)
                 PartitionCles=list(SegmentedData[flash].keys())
                 PartitionCles.sort()
                 for Partition in PartitionCles:
                     if organizedbytime: # calcule la profondeur moyenne de la partition si profil temporel
                         SegmentedData[flash][Partition]['depth']=round(SegmentedData[flash][Partition]['depth']/SegmentedData[flash][Partition]['imgcount'],1)
+                    else:
+                        SegmentedData[flash][Partition]['timestamp'] = round(SegmentedData[flash][Partition]['timestamp'] / SegmentedData[flash][Partition]['imgcount'], 1)
                     for area in SegmentedData[flash][Partition]['area']:
                         a = np.array(SegmentedData[flash][Partition]['area'][area])
                         (histo, limits) = np.histogram(a[:, 1], bins=4, weights=a[:, 0])
                         DataRow=[SegmentedData[flash][Partition]['depth'], SegmentedData[flash][Partition]['imgcount'], area, histo.sum(),limits[1],limits[2],limits[3]]
                         if organizedbytime: # ajout de l'heure de la partition
                             DataRow.append(Partition)
+                        else: # ajout de l'heure moyenne de la partition
+                            ts=SegmentedData[flash][Partition]['timestamp']
+                            DataRow.append(datetime.datetime.fromtimestamp(ts).strftime("%Y%m%d%H%M%S") if ts else '')
                         cf.writerow(DataRow)
 
         UvpSample.histobrutavailable = True
@@ -572,7 +584,7 @@ def GenerateParticleHistogram(psampleid):
     logging.info("GenerateParticleHistogram processing raw histogram file  %s" % DetHistoFile)
     Part=np.loadtxt(DetHistoFile,delimiter='\t',skiprows=1)
     if UvpSample.organizedbydeepth:
-        # format de raw 0:depth,1:imgcount,2:area,3:nbr,4:greylimit1,greylimit2,greylimit3
+        # format de raw 0:depth,1:imgcount,2:area,3:nbr,4:greylimit1,greylimit2,greylimit3,7:Heure(optionnel)
         # 1 Ligne par mètre et area, ne contient les données entre fist et last
         MinDepth=Part[:,0].min()
         # ajout d'attributs calculés pour chaque ligne du fichier.
@@ -581,6 +593,14 @@ def GenerateParticleHistogram(psampleid):
         PartCalc[:,1]=2*np.sqrt((pow(Part[:,2],UvpSample.acq_exp)*UvpSample.acq_aa)/np.pi)
         PartCalc[:, 2] = Part[:,3]*pow(PartCalc[:, 1] / 2, 3) * 4 * math.pi / 3
         LastTranche=PartCalc[:,0].max()
+        DateConvDict={}
+        if Part.shape[1]>7: # s'il y a une colonne des heures on les convertis en TimeStamp
+            for i in range(Part.shape[0]):
+                if Part[i, 7] :
+                    dateint=int(Part[i, 7])
+                    if dateint not in DateConvDict:
+                        DateConvDict[dateint]=datetime.datetime.strptime(str(dateint),"%Y%m%d%H%M%S").timestamp()
+                    Part[i, 7] = DateConvDict[dateint]
         # on récupere les 1ère ligne de chaque mètre afin de calculer le volume d'eau
         FirstLigByDepth = Part[np.unique(Part[:, 0], return_index=True)[1]]
         # on calcule le volume de chaque tranche (y compris celle qui n'existent pas en 0 et la profondeur maxi)
@@ -589,6 +609,12 @@ def GenerateParticleHistogram(psampleid):
         # On supprime les tranches vides, mais ça fait planter les graphes suivants
         # VolumeParTranche=VolumeParTranche[np.nonzero(VolumeParTranche)]
         # MetreParTranche = MetreParTranche[np.nonzero(VolumeParTranche)]
+        if Part.shape[1] > 7:
+            TimeParTranche = np.bincount((FirstLigByDepth[:, 0]//5).astype(np.int32),
+                                      FirstLigByDepth[:, 7]) / np.bincount((FirstLigByDepth[:, 0]//5).astype(np.int32))
+        else:
+            TimeParTranche = np.zeros([Part.shape[0]])
+
     else: # calcul des histogramme temporels
         # format de raw 0:depth,1:imgcount,2:area,3:nbr,4:greylimit1,5:greylimit2,6:greylimit3,7:YYYYMMDDHHMISS en decimal arrondi à la resolution integrationtime
         # 1 Ligne par mètre et area, ne contient les données entre fist et last
@@ -782,7 +808,10 @@ def GenerateParticleHistogram(psampleid):
         sqlparam['lineno']=i
         if UvpSample.organizedbydeepth:
             sqlparam['depth'] = (i*5+2.5)
-            sqlparam['datetime'] = None
+            if TimeParTranche[i] and  TimeParTranche[i]!=np.NaN :
+                sqlparam['datetime'] = datetime.datetime.fromtimestamp(int(TimeParTranche[i]))
+            else:
+                sqlparam['datetime'] = None
         else:
             sqlparam['depth'] = round(DepthParTranche[i],1)
             sqlparam['datetime'] = HeureDebut+  datetime.timedelta(hours=i,minutes=30)
