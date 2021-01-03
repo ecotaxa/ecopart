@@ -77,3 +77,13 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
     UVP5FileMaker.GenerateUVP5Folder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed"
                                      ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU"
                                      ,DirName="tu1_uvp5bru")
+
+    UVP5FileMaker.GenerateUVP5Folder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed"
+                                     ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU1"
+                                     ,DirName="tu1_uvp5bru1"
+                                     ,BRUFormat="bru1")
+
+    import gendb.UVPAppFileMaker as UVPAppFileMaker
+    UVPAppFileMaker.GenerateUVPAppFolder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed"
+                                     ,TargetProjectTitle="EcoPart TU Project UVP 6 from UVP APP"
+                                     ,DirName="tu1_uvp6uvpapp")

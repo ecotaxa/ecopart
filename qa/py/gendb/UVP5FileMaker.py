@@ -103,7 +103,7 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="br
                                        'nb blobs P-G':5,'mean area P-G':6,'mean grey P-G':7,
                                        'nb blobs G': 8, 'mean grey G': 9
                                        })
-                        for classe in range(1,45):
+                        for classe in range(1,46):
                             Nbr=getattr(H,'class%02d'%classe)
                             if Nbr is None:
                                 continue

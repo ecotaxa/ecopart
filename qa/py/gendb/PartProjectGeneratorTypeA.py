@@ -51,6 +51,8 @@ class PartProjectGeneratorTypeA:
             h.lineno = d
             h.depth = d * 5 + 2.5  # c'est des tranche de 5 m
             h.watervolume = Sample.acq_volimage*NbrImages
+            for i in range(1,46):
+                setattr(h,f"class{i:02d}",0)
             # Classe reduite 6 = Det 16->18
             h.class17 = Clean(400 - d)
             h.class18 = Clean(200 - d)
@@ -85,7 +87,8 @@ class PartProjectGeneratorTypeA:
         # Sample.acq_aa = 0.0043
         # Sample.acq_exp = 1.12
         # Autres valeurs pas forcement réalistes mais permet de générer des bru qui remplisses les classes 17 et +
-        Sample.acq_aa = 0.0006
+#        Sample.acq_aa = 0.0006
+        Sample.acq_aa = 0.0002
         Sample.acq_exp = 1.02
         Sample.acq_volimage = 1.13
         Sample.acq_depthoffset = 1.2

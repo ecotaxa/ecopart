@@ -23,6 +23,7 @@ def GenerateUVPAppFolder(SrcProjectTitle,TargetProjectTitle, DirName):
         part_project.pprojid=None
         part_project.ptitle=TargetProjectTitle
         part_project.rawfolder="qa/data/"+DirName
+        part_project.instrumtype="uvp6"
         db.session.add(part_project)
         db.session.commit()
         m = re.search(R"([^_]+)_(.*)", DirName)
@@ -100,9 +101,9 @@ ACQ_CONF,ACQ_ROV,2,2.000,1,1,0,0,1,1,70,2,700,2.0,50,10,0,1000,0,40,l.picheral,0
                         # Les quartets sont séparés entre eux par des ;
                         for noimg in range(NbrImage):
                             PartDatas=[]
-                            for classe in range(1, 45):
+                            for classe in range(1, 46): # 1->45
                                 NbrClasse = getattr(H, 'class%02d' % classe)
-                                if NbrClasse is None:
+                                if NbrClasse is None or NbrClasse ==0:
                                     continue
                                 Nbr = int(NbrClasse/NbrImage)
                                 if noimg==0: #l'image 0 s'ajuste quand la division entière provoque un reste"
