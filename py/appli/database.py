@@ -538,6 +538,14 @@ def GetAll(sql, params=None, debug=False, cursor_factory=psycopg2.extras.DictCur
         cur.close()
     return res
 
+def GetRow(sql, params=None, debug=False, cursor_factory=psycopg2.extras.DictCursor, doXSSEscape=False):
+    res=GetAll(sql, params, debug, cursor_factory, doXSSEscape)
+    if len(res)==0:
+        raise Exception("database.GetRow not enought rows on %s %s"%(sql, params))
+    if len(res)>1:
+        raise Exception("database.GetRow too much rows on %s %s"%(sql, params))
+    return res[0]
+
 
 def ExecSQL(sql, params=None, debug=False):
     if g.db is None:
