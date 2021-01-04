@@ -582,17 +582,17 @@ def GenerateParticleHistogram(psampleid):
 
     DetHistoFile=GetPathForRawHistoFile(psampleid)
     logging.info("GenerateParticleHistogram processing raw histogram file  %s" % DetHistoFile)
+    # format de raw 0:depth, 1:imgcount, 2:area, 3:nbr, 4:greylimit1, 5:greylimit2, 6:greylimit3, 7:Heure(optionnel)
     Part=np.loadtxt(DetHistoFile,delimiter='\t',skiprows=1)
+    # ESD en mm (diametre équivalent sphérique) calculé à partir de l'area
+    partESD = 2 * np.sqrt((pow(Part[:, 2], UvpSample.acq_exp) * UvpSample.acq_aa) / np.pi)
+    # BV en mm3 , utiliser l'ESD et la nombre de particule
+    partBV = Part[:, 3] * pow(partESD / 2, 3) * 4 * math.pi / 3
     if UvpSample.organizedbydeepth:
-        # format de raw 0:depth,1:imgcount,2:area,3:nbr,4:greylimit1,greylimit2,greylimit3,7:Heure(optionnel)
         # 1 Ligne par mètre et area, ne contient les données entre fist et last
         MinDepth=Part[:,0].min()
-        # ajout d'attributs calculés pour chaque ligne du fichier.
-        PartCalc=np.empty([Part.shape[0],3]) # col0 = tranche, Col1=ESD, Col2=Biovolume en µl=mm3
-        PartCalc[:,0]=Part[:,0]//5  #calcul de la tranche 0 pour [0m..5m[,1 pour [5m..10m[
-        PartCalc[:,1]=2*np.sqrt((pow(Part[:,2],UvpSample.acq_exp)*UvpSample.acq_aa)/np.pi)
-        PartCalc[:, 2] = Part[:,3]*pow(PartCalc[:, 1] / 2, 3) * 4 * math.pi / 3
-        LastTranche=PartCalc[:,0].max()
+        partTranche=Part[:,0]//5  #calcul de la tranche 0 pour [0m..5m[,1 pour [5m..10m[
+        LastTranche=partTranche.max()
         DateConvDict={}
         if Part.shape[1]>7: # s'il y a une colonne des heures on les convertis en TimeStamp
             for i in range(Part.shape[0]):
@@ -619,32 +619,32 @@ def GenerateParticleHistogram(psampleid):
         # format de raw 0:depth,1:imgcount,2:area,3:nbr,4:greylimit1,5:greylimit2,6:greylimit3,7:YYYYMMDDHHMISS en decimal arrondi à la resolution integrationtime
         # 1 Ligne par mètre et area, ne contient les données entre fist et last
         MinDepth=Part[:,0].min()
+        MetreParTranche=LastTranche=None # utile seulement pour les graphes depth, cette ligne permet d'éviter des warnings
         # ajout d'attributs calculés pour chaque ligne du fichier.
-        PartCalc=np.empty([Part.shape[0],3]) # col0 = tranche, Col1=ESD, Col2=Biovolume en µl=mm3
+        partTranche=np.empty([Part.shape[0]])
         DateConvDict={}
         for i in range(Part.shape[0]):
             dateint=int(Part[i, 7])
             if dateint not in DateConvDict:
                 DateConvDict[dateint]=datetime.datetime.strptime(str(dateint),"%Y%m%d%H%M%S").timestamp()//3600
-            PartCalc[i, 0] = DateConvDict[dateint]
-        TSHeureDebut=np.min(PartCalc[:, 0])
+            partTranche[i] = DateConvDict[dateint]
+        TSHeureDebut=np.min(partTranche)
         HeureDebut=datetime.datetime.fromtimestamp(TSHeureDebut*3600)
-        PartCalc[:, 0]-=TSHeureDebut # contient Le N° de tranche temporelle relatif 0= 1ère tranche, 1=1h plus tard
-        PartCalc[:,1]=2*np.sqrt((pow(Part[:,2],UvpSample.acq_exp)*UvpSample.acq_aa)/np.pi)
-        PartCalc[:, 2] = Part[:,3]*pow(PartCalc[:, 1] / 2, 3) * 4 * math.pi / 3
+        partTranche-=TSHeureDebut # contient Le N° de tranche temporelle relatif 0= 1ère tranche, 1=1h plus tard
         # on récupere les 1ère ligne de chaque tranche temporelle originale
         FirstLigIDByImage = np.unique(Part[:, 7], return_index=True)[1]
-        #MaxTrancheId=np.max(PartCalc[:, 0])
         # on calcule le volume de chaque tranche (y compris celle qui n'existent (bincount génère touts les pas entre 0 et la MaxTrancheId
-        VolumeParTranche=np.bincount((PartCalc[FirstLigIDByImage, 0]).astype(np.int32), Part[FirstLigIDByImage, 1])*UvpSample.acq_volimage  # Bin par tranche de 1h
-        DepthParTranche = np.bincount((PartCalc[FirstLigIDByImage, 0]).astype(np.int32), Part[FirstLigIDByImage, 0])/np.bincount((PartCalc[FirstLigIDByImage, 0]).astype(np.int32))
+        VolumeParTranche=np.bincount((partTranche[FirstLigIDByImage]).astype(np.int32)
+                                     , Part[FirstLigIDByImage, 1])*UvpSample.acq_volimage  # Bin par tranche de 1h
+        DepthParTranche = np.bincount((partTranche[FirstLigIDByImage]).astype(np.int32)
+                                      , Part[FirstLigIDByImage, 0])/np.bincount((partTranche[FirstLigIDByImage]).astype(np.int32))
     # les calculs de concentration sont commun au 2 types de profils
-    (PartByClassAndTranche, bins, binsdept) = np.histogram2d(PartCalc[:,1], PartCalc[:,0], bins=(
-        PartDetClassLimit, np.arange(0, VolumeParTranche.shape[0]+1 ))
+    (PartByClassAndTranche, bins, binsdept) = np.histogram2d(partESD, partTranche
+            , bins=( PartDetClassLimit, np.arange(0, VolumeParTranche.shape[0]+1 ))
             , weights=Part[:, 3])
-    (BioVolByClassAndTranche, bins, binsdept) = np.histogram2d(PartCalc[:,1], PartCalc[:,0], bins=(
-        PartDetClassLimit, np.arange(0, VolumeParTranche.shape[0]+1 ))
-            , weights=PartCalc[:, 2])
+    (BioVolByClassAndTranche, bins, binsdept) = np.histogram2d(partESD, partTranche
+            , bins=( PartDetClassLimit, np.arange(0, VolumeParTranche.shape[0]+1 ))
+            , weights=partBV)
     with np.errstate(divide='ignore', invalid='ignore'): # masque les warning provoquées par les divisions par 0 des tranches vides.
         BioVolByClassAndTranche/=VolumeParTranche
 
@@ -655,6 +655,58 @@ def GenerateParticleHistogram(psampleid):
     plt.rcParams['lines.linewidth'] = 0.5
 
     Fig = plt.figure(figsize=(16, 12), dpi=100, )
+
+
+    posColName='posP' if UvpSample.organizedbydeepth else 'posT'
+    # Calcul des Graphes Particle
+    Graphes = [
+        {'filtre': np.argwhere(partESD <= 0.53)
+            , "label": 'Part 0.06-0.53 mm esd # l-1', 'posT': 422, 'posP': 242},
+        {'filtre': np.argwhere((partESD >= 0.53) & (partESD <= 1.06))
+            , "label": 'Part 0.53-1.06 mm esd # l-1', 'posT': 423, 'posP': 243},
+        {'filtre': np.argwhere((partESD >= 1.06) & (partESD <= 2.66))
+            , "label": 'Part 1.06-2.66 mm esd # l-1', 'posT': 424, 'posP': 244},
+    ]
+    for G in Graphes:
+        ax = Fig.add_subplot(G[posColName])
+        (n, bins) = np.histogram(partTranche[G['filtre']], np.arange(len(VolumeParTranche) + 1),weights=Part[G['filtre'], 3])
+        with np.errstate(divide='ignore',invalid='ignore'):  # masque les warning provoquées par les divisions par 0 des tranches vides.
+            n = n / VolumeParTranche
+        ax.set_yticks(GetTicks(n.max()))
+        if UvpSample.organizedbydeepth:
+            ax.plot(n, bins[:-1] * -5 - MinDepth - 2.5)
+            ax.set_xticks(GetTicks(n.max()))
+            ax.set_xlabel(G['label'])
+            ax.set_ylabel('Depth(m)')
+        else:
+            ax.plot(np.arange(len(VolumeParTranche)) + 0.5, n)
+            ax.set_ylabel(G['label'])
+
+    # Calcul Biovolume & # Particle via histograme
+    Graphes =[
+        {'data': np.sum(BioVolByClassAndTranche[28:30,:],axis=0)
+            , "label": 'Part >=0.512-<1.02 mm esd mm3 l-1', 'posT': 425, 'posP': 245},
+        {'data': np.sum(PartByClassAndTranche[0:28, :], axis=0)/ VolumeParTranche
+            , "label": 'Part <0.512 mm esd # l-1', 'posT': 426, 'posP': 246},
+        {'data': np.sum(PartByClassAndTranche[28:30, :], axis=0)/ VolumeParTranche
+            , "label": 'Part >=0.512-<1.02 mm esd # l-1', 'posT': 427, 'posP': 247},
+        {'data': np.sum(PartByClassAndTranche[30:34, :], axis=0)/ VolumeParTranche
+            , "label": 'Part >=1.02-<2.58 mm esd # l-1', 'posT': 428, 'posP': 248},
+    ]
+    for G in Graphes:
+        ax = Fig.add_subplot(G[posColName])
+        if UvpSample.organizedbydeepth:
+            ax.plot(G['data'], np.arange(0, LastTranche + 1) * -5 - 2.5)
+            ax.set_xticks(GetTicks(n.max()))
+            ax.set_xlabel(G['label'])
+            ax.set_ylabel('Depth(m)  from det histo')
+        else:
+            ax.plot(np.arange(len(VolumeParTranche)) + 0.5, G['data'])
+            ax.set_yticks(GetTicks(G['data'].max()))
+            ax.set_ylabel(G['label'])
+            ax.set_xlabel('Time(h) from det histo')
+
+
     if UvpSample.organizedbydeepth:
         # calcul volume par metre moyen de chaque tranche
         ax = Fig.add_subplot(241)
@@ -665,119 +717,14 @@ def GenerateParticleHistogram(psampleid):
         ax.set_xlabel('Volume/M')
         ax.set_ylabel('Depth(m)')
 
-        # Calcul Particle <=0.53
-        Filtre=np.argwhere(PartCalc[:,1]<=0.53)
-        ax = Fig.add_subplot(242)
-        (n,bins)=np.histogram(PartCalc[Filtre,0],np.arange(len(VolumeParTranche)+1),weights=Part[Filtre,3])
-        with np.errstate(divide='ignore', invalid='ignore'):  # masque les warning provoquées par les divisions par 0 des tranches vides.
-            n=n/VolumeParTranche
-        ax.plot(n , bins[:-1]*-5-MinDepth-2.5)
-        ax.set_xticks(GetTicks(n.max()))
-
-        ax.set_xlabel('Part 0.06-0.53 mm esd # l-1')
-        ax.set_ylabel('Depth(m)')
-
-
-        # Calcul Particle 0.53->1.06
-        Filtre=np.argwhere((PartCalc[:,1]>=0.53)&(PartCalc[:,1]<=1.06))
-        ax = Fig.add_subplot(243)
-        (n,bins)=np.histogram(PartCalc[Filtre,0],np.arange(len(VolumeParTranche)+1),weights=Part[Filtre,3])
-        with np.errstate(divide='ignore', invalid='ignore'):  # masque les warning provoquées par les divisions par 0 des tranches vides.
-            n=n/VolumeParTranche
-        ax.plot(n , bins[:-1]*-5-MinDepth-2.5)
-        ax.set_xticks(GetTicks(n.max()))
-        ax.set_xlabel('Part 0.53-1.06 mm esd # l-1')
-        ax.set_ylabel('Depth(m)')
-
-        # Calcul Particle 1.06->2.66
-        Filtre=np.argwhere((PartCalc[:,1]>=1.06)&(PartCalc[:,1]<=2.66))
-        ax = Fig.add_subplot(244)
-        (n,bins)=np.histogram(PartCalc[Filtre,0],np.arange(len(VolumeParTranche)+1),weights=Part[Filtre,3])
-        with np.errstate(divide='ignore', invalid='ignore'):  # masque les warning provoquées par les divisions par 0 des tranches vides.
-            n=n/VolumeParTranche
-        ax.plot(n , bins[:-1]*-5-MinDepth-2.5)
-        ax.set_xticks(GetTicks(n.max()))
-        ax.set_xlabel('Part 1.06-2.66 mm esd # l-1')
-        ax.set_ylabel('Depth(m)')
-
-        # Calcul Biovolume Particle >0.512-<=1.02 mm via histograme
-        n=np.sum(BioVolByClassAndTranche[28:30,:],axis=0)
-        ax = Fig.add_subplot(245)
-        ax.plot(n , np.arange(0, LastTranche+1 )*-5 -2.5)
-        ax.set_xticks(GetTicks(n.max()))
-        ax.set_xlabel('Part >=0.512-<1.02 mm esd mm3 l-1 from det histo')
-        ax.set_ylabel('Depth(m)')
-
-        # Calcul Particle <=0.512 mm via histograme
-        n=np.sum(PartByClassAndTranche[0:28,:],axis=0)
-        ax = Fig.add_subplot(246)
-        with np.errstate(divide='ignore', invalid='ignore'):  # masque les warning provoquées par les divisions par 0 des tranches vides.
-            n=n/VolumeParTranche
-        ax.plot(n , np.arange(0, LastTranche+1 )*-5 -2.5)
-        ax.set_xticks(GetTicks(n.max()))
-        ax.set_xlabel('Part <0.512 mm esd # l-1 from det histo')
-        ax.set_ylabel('Depth(m)')
-
-        # Calcul Particle >0.512-<=1.02 mm via histograme
-        n=np.sum(PartByClassAndTranche[28:30,:],axis=0)
-        ax = Fig.add_subplot(247)
-        with np.errstate(divide='ignore', invalid='ignore'):  # masque les warning provoquées par les divisions par 0 des tranches vides.
-            n=n/VolumeParTranche
-        ax.plot(n , np.arange(0, LastTranche+1 )*-5 -2.5)
-        ax.set_xticks(GetTicks(n.max()))
-        ax.set_xlabel('Part >=0.512-<1.02 mm esd # l-1 from det histo')
-        ax.set_ylabel('Depth(m)')
-
-        # Calcul Particle >0.512-<=1.02 mm via histograme
-        n=np.sum(PartByClassAndTranche[30:34,:],axis=0)
-        ax = Fig.add_subplot(248)
-        with np.errstate(divide='ignore', invalid='ignore'):  # masque les warning provoquées par les divisions par 0 des tranches vides.
-            n=n/VolumeParTranche
-        ax.plot(n , np.arange(0, LastTranche+1 )*-5 -2.5)
-        ax.set_xticks(GetTicks(n.max()))
-        ax.set_xlabel('Part >=1.02-<2.58 mm esd # l-1 from det histo')
-        ax.set_ylabel('Depth(m)')
     else:
         # calcul volume par metre moyen de chaque tranche
         ax = Fig.add_subplot(421)
-        # si une tranche n'as pas été entierement explorée la /5 est un calcul éronné
         ax.plot(np.arange(len(VolumeParTranche))+0.5,VolumeParTranche)
         ax.set_yticks(GetTicks(VolumeParTranche.max()))
         ax.set_ylabel('Volume')
 
-        # Calcul Particle <=0.53
-        Graphes =[
-            {'filtre':np.argwhere(PartCalc[:, 1] <= 0.53), "label":'Part 0.06-0.53 mm esd # l-1','pos':422},
-            {'filtre': np.argwhere((PartCalc[:,1]>=0.53)&(PartCalc[:,1]<=1.06)), "label": 'Part 0.53-1.06 mm esd # l-1', 'pos': 423},
-            {'filtre': np.argwhere((PartCalc[:, 1] >= 1.06) & (PartCalc[:, 1] <= 2.66)),"label": 'Part 1.06-2.66 mm esd # l-1', 'pos': 424},
-        ]
-        for G in Graphes:
-            ax = Fig.add_subplot(G['pos'])
-            (n, bins) = np.histogram(PartCalc[G['filtre'], 0], np.arange(len(VolumeParTranche) + 1), weights=Part[G['filtre'], 3])
-            with np.errstate(divide='ignore', invalid='ignore'):  # masque les warning provoquées par les divisions par 0 des tranches vides.
-                n = n / VolumeParTranche
-            ax.plot( np.arange(len(VolumeParTranche))+0.5,n)
-            ax.set_yticks(GetTicks(n.max()))
-            ax.set_ylabel(G['label'])
-
-        # Calcul Biovolume Particle >0.512-<=1.02 mm via histograme
-        Graphes =[
-            {'data': np.sum(BioVolByClassAndTranche[28:30,:],axis=0), "label": 'Part >=0.512-<1.02 mm esd mm3 l-1', 'pos': 425},
-            {'data': np.sum(PartByClassAndTranche[0:28, :], axis=0)/ VolumeParTranche, "label": 'Part <0.512 mm esd # l-1', 'pos': 426},
-            {'data': np.sum(PartByClassAndTranche[28:30, :], axis=0)/ VolumeParTranche, "label": 'Part >=0.512-<1.02 mm esd # l-1', 'pos': 427},
-            {'data': np.sum(PartByClassAndTranche[30:34, :], axis=0)/ VolumeParTranche, "label": 'Part >=1.02-<2.58 mm esd # l-1', 'pos': 428},
-        ]
-        for G in Graphes:
-            ax = Fig.add_subplot(G['pos'])
-            ax.plot(np.arange(len(VolumeParTranche)) + 0.5, G['data'])
-            ax.set_yticks(GetTicks(G['data'].max()))
-            ax.set_xlabel('Time(h) from det histo')
-            ax.set_ylabel(G['label'])
-
-
-    # Fig.savefig((DossierUVPPath / 'results' / ('ecotaxa_particle_' + UvpSample.profileid+'.png')).as_posix())
     Fig.text(0.05, 0.99, "Project : %s , Profile %s , Filename : %s"%(Prj.ptitle,UvpSample.profileid,UvpSample.filename), ha='left')
-    # Fig.suptitle("Project %s : Profile %s"%(Prj.ptitle,UvpSample.profileid), ha='center')
     Fig.tight_layout(rect=(0,0,1,0.99)) # permet de laisser un peu de blanc en haut pour le titre
     Fig.savefig(GetPathForImportGraph(psampleid,'particle'))
     Fig.clf()
