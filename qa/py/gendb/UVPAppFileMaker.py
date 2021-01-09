@@ -38,7 +38,7 @@ def GenerateUVPAppFolder(SrcProjectTitle,TargetProjectTitle, DirName):
         if not EcodataDirPath.exists():
             EcodataDirPath.mkdir()
         with HeaderFilePath.open("w", newline='') as HeaderFile:
-            fieldnames="cruise;ship;filename;profileid;bottomdepth;ctdrosettefilename;latitude;longitude;firstimage;volimage;aa;exp;dn;winddir;windspeed;seastate;nebuloussness;comment;endimg;yoyo;stationid;pixelsize".split(';')
+            fieldnames="cruise;ship;filename;profileid;bottomdepth;ctdrosettefilename;latitude;longitude;firstimage;volimage;aa;exp;dn;winddir;windspeed;seastate;nebuloussness;comment;endimg;yoyo;stationid;pixelsize;sampletype;integrationtime".split(';')
             w = csv.DictWriter(HeaderFile, delimiter=';', fieldnames=fieldnames )
             w.writeheader()
             for S in part_samples.query.filter_by(pprojid=originalpprojid):
@@ -46,7 +46,8 @@ def GenerateUVPAppFolder(SrcProjectTitle,TargetProjectTitle, DirName):
                 HeaderRow={'cruise': "TestCruise","ship":"Testship",'profileid': S.profileid,
                             'filename': filename,
                             'latitude': S.latitude,'longitude': S.longitude,'firstimage':S.firstimage,'endimg':S.lastimg,
-                            'aa': S.acq_aa,'exp': S.acq_exp,'volimage': S.acq_volimage,'pixelsize':0.088
+                            'aa': S.acq_aa,'exp': S.acq_exp,'volimage': S.acq_volimage,'pixelsize':0.088,
+                            'sampletype':'P' if S.organizedbydeepth else 'T', 'integrationtime':S.integrationtime
                             }
                 w.writerow(HeaderRow)
                 SampleFolderPath= EcodataDirPath / ("%s"%S.profileid)

@@ -10,6 +10,8 @@ from appli import appli
 from flask_login import current_user,login_user
 from sqlalchemy import Table, text
 import subprocess
+import runtask
+
 
 HERE = Path(dirname(realpath(__file__)))
 DATA_DIR = (HERE / ".." / "data").resolve()
@@ -26,7 +28,7 @@ def LogUser(email):
     login_user(database.users.query.filter_by(email=email).first())
 
 def GetLastTaskID():
-    return database.GetAll("select max(id) id from temp_tasks")[0]['id']
+    return database.GetAll("select max(id) maxid from temp_tasks")[0]['maxid']
 
 class TaskInstance:
     def __init__(self, app, ClassName, GetParams="", PostParams=None, Login='admin'):
@@ -52,7 +54,6 @@ class TaskInstance:
         return self
 
     def RunTask(self):
-        import runtask
         runtask.RunTask(self.TaskID,LogLevel=logging.getLogger().level)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -81,64 +82,74 @@ def ShowOnWinmerge(File1,File2):
     # print(cmd)
     subprocess.call(cmd)
 
+def evaluate_sampleTypeAkeyValues(psampleid):
+    """On teste des valeurs clés du sample, les # & BV des 2 premières classe et le watervolume"""
+    sql = """select sum(watervolume) swatervolume,sum(class17) sclass17,sum(biovol17*watervolume) sbiovol17 
+        ,sum(class18) sclass18 ,sum(biovol18*watervolume) sbiovol18
+    from part_histopart_det t where psampleid=%s"""
+    res = database.GetRow(sql, [psampleid])
+    assert res['swatervolume'] == pytest.approx(339)
+    assert res['sclass17'] == pytest.approx(75150)
+    assert res['sbiovol17'] == pytest.approx(3.139335)
+    assert res['sclass18'] == pytest.approx(20100)
+    assert res['sbiovol18'] == pytest.approx(1.915367)
+
 
 def test_import_uvp6_uvpapp(app,caplog,tmpdir):
     caplog.set_level(logging.DEBUG)  # pour mise au point
     caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
     part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 6 from UVP APP").first()
-    part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
     if part_project is None:
         pytest.fail("UVPAPP Project Missing")
-    if part_project_ref is None:
-        pytest.fail("UVPAPP Ref Project Missing")
-    with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","starttask": "Y"}) as T:
+    pprojid=part_project.pprojid
+    with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","new_4": "sampleT1","new_5": "sampleT2","new_6": "sampleT3","starttask": "Y"}) as T:
         print(f"TaskID={T.TaskID}")
         T.RunTask()
         ExcludedCols=[f'biovol{i:02d}' for i in range (1,46)] # Les biovolumes ne sont pas calculés dans le modèle.
         ExcludedCols.append('psampleid')
-        part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 6 from UVP APP").first()
         part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        if part_project_ref is None:
+            pytest.fail("BRU Ref Project Missing")
         Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
-        Sample1=dbpart.part_samples.query.filter_by(pprojid=part_project.pprojid,profileid="sample01").first()
+        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
+        SampleT1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT1").first()
 
         reffile=tmpdir.join("reffile.txt")
         datafile=tmpdir.join("datafile.txt")
-        # TODO pouvoir transmettre un nom de fichier et pas forcement un file
         with open(reffile, "w") as fd:
             dump_table(fd, dbpart.part_histopart_reduit, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
             dump_table(fd, dbpart.part_histopart_det, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
         with open(datafile, "w") as fd:
             dump_table(fd, dbpart.part_histopart_reduit, f"psampleid={Sample1.psampleid}", skipcol=ExcludedCols)
             dump_table(fd, dbpart.part_histopart_det, f"psampleid={Sample1.psampleid}", skipcol=ExcludedCols)
-
-
         cmpresult=reffile.read() ==  datafile.read() # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
         if not cmpresult: ShowOnWinmerge(reffile, datafile)
         assert cmpresult
+        for sampleid in (Sample1.psampleid,SampleT1.psampleid):
+            evaluate_sampleTypeAkeyValues(sampleid)
+
 
 def test_import_uvp5_BRU(app,caplog,tmpdir):
     caplog.set_level(logging.DEBUG)  # pour mise au point
     caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
     part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 5 pour load BRU").first()
-    part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
     if part_project is None:
         pytest.fail("BRU Project Missing")
-    if part_project_ref is None:
-        pytest.fail("BRU Ref Project Missing")
+    pprojid=part_project.pprojid
     with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","starttask": "Y"}) as T:
         print(f"TaskID={T.TaskID}")
         T.RunTask()
         ExcludedCols=[f'biovol{i:02d}' for i in range (1,46)] # Les biovolumes ne sont pas calculés dans le modèle.
         ExcludedCols.append('psampleid')
         ExcludedCols.append('datetime') # les projets UVP5 ne gèrent pas cette colonne historiquement.
-        part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 5 pour load BRU").first()
         part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        if part_project_ref is None:
+            pytest.fail("BRU Ref Project Missing")
         Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
-        Sample1=dbpart.part_samples.query.filter_by(pprojid=part_project.pprojid,profileid="sample01").first()
+        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
 
         reffile=tmpdir.join("reffile.txt")
         datafile=tmpdir.join("datafile.txt")
-        # TODO pouvoir transmettre un nom de fichier et pas forcement un file
         with open(reffile, "w") as fd:
             dump_table(fd, dbpart.part_histopart_reduit, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
             dump_table(fd, dbpart.part_histopart_det, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
@@ -150,4 +161,69 @@ def test_import_uvp5_BRU(app,caplog,tmpdir):
         cmpresult=reffile.read() ==  datafile.read() # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
         if not cmpresult: ShowOnWinmerge(reffile, datafile)
         assert cmpresult
+        evaluate_sampleTypeAkeyValues(Sample1.psampleid)
+
+def test_import_uvp5_BRU1(app,caplog,tmpdir):
+    caplog.set_level(logging.DEBUG)  # pour mise au point
+    caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
+    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 5 pour load BRU1").first()
+    if part_project is None:
+        pytest.fail("BRU1 Project Missing")
+    pprojid=part_project.pprojid
+    with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","starttask": "Y"}) as T:
+        print(f"TaskID={T.TaskID}")
+        T.RunTask()
+        ExcludedCols=[f'biovol{i:02d}' for i in range (1,46)] # Les biovolumes ne sont pas calculés dans le modèle.
+        ExcludedCols.append('psampleid')
+        ExcludedCols.append('datetime') # les projets UVP5 ne gèrent pas cette colonne historiquement.
+        part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        if part_project_ref is None:
+            pytest.fail("BRU Ref Project Missing")
+        Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
+        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
+
+        reffile=tmpdir.join("reffile.txt")
+        datafile=tmpdir.join("datafile.txt")
+        with open(reffile, "w") as fd:
+            dump_table(fd, dbpart.part_histopart_reduit, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
+            dump_table(fd, dbpart.part_histopart_det, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
+        with open(datafile, "w") as fd:
+            dump_table(fd, dbpart.part_histopart_reduit, f"psampleid={Sample1.psampleid}", skipcol=ExcludedCols)
+            dump_table(fd, dbpart.part_histopart_det, f"psampleid={Sample1.psampleid}", skipcol=ExcludedCols)
+
+
+        cmpresult=reffile.read() ==  datafile.read() # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
+        if not cmpresult: ShowOnWinmerge(reffile, datafile)
+        assert cmpresult
+        evaluate_sampleTypeAkeyValues(Sample1.psampleid)
+
+def test_import_lisst(app,caplog,tmpdir):
+    caplog.set_level(logging.DEBUG)  # pour mise au point
+    caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
+    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project LISST").first()
+    if part_project is None:
+        pytest.fail("LISST Project Missing")
+    pprojid=part_project.pprojid
+    with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","starttask": "Y"}) as T: # on importe pas les temporels car ils ne sont pas correctement traités
+        print(f"TaskID={T.TaskID}")
+        T.RunTask()
+        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
+        # On controle le total biovolume avec quelques PB
+        #  sur le lisst on a pas les watervolume associés on fait donc la some des concentrations (qui dans l'abosolu n'as pas de sens
+        #  puisqu'il y a le même nombre de ligne dans l'histograme
+        # les classe du LISST ne sont pas les même il y a des mécanisme de ventilation proportionnelle dans les classe EcoPart
+        # il faut donc regrouper certaines classes pour les comparer avec un import UVP
+        sql = """select sum(biovol17) biovol17raw
+                        ,sum(biovol18+biovol19+biovol20) biovol18_20raw
+                        ,sum(biovol22) biovol22raw
+                        ,sum(biovol23+biovol24) biovol2324raw        
+        from part_histopart_det t where psampleid=%s"""
+        res = database.GetRow(sql, [Sample1.psampleid])
+        assert res['biovol17raw'] == pytest.approx(2.7781733)
+        assert res['biovol18_20raw'] == pytest.approx(2.2831353)
+        assert res['biovol22raw'] == pytest.approx(3.1642698)
+        assert res['biovol2324raw'] == pytest.approx(39.27267)
+
+
+
 

@@ -56,18 +56,20 @@ class ZooProjectGeneratorTypeA(ZooProjectGenerator):
     def Generate(self,Title,OwnerID=1) :
         Prj=self.InitializeProject(Title,OwnerID)
         logging.info(f"Project {Prj.projid} : {Prj.title} Created")
-        Sample=self.CreateSample("sample01")
-        Sampleid=Sample.sampleid # if faut memoriser les ID sinon ça fait un select à chaque fois qu'on le demande
-        T0=datetime(2019,11,21)
-        for d in range(100):
-            self.CreateOject(Sampleid,"Acantharea",Depth=2+d*2,DateTime=T0+timedelta(minutes=d),Area=300-d)
-        for d in range(500):
-            self.CreateOject(Sampleid,"solitaryblack",Depth=2+d,DateTime=T0+timedelta(minutes=d),Area=400-(d//2))
-            self.CreateOject(Sampleid,"solitarygrey" ,Depth=2+d , DateTime=T0 + timedelta(minutes=d),Area=300 - (d // 3))
-        for d in range(1000):
-            self.CreateOject(Sampleid,"fiber<plastic",Depth=2+d*0.5,DateTime=T0+timedelta(minutes=d),Area=200-(d // 10))
-            self.CreateOject(Sampleid,"fiber<detritus",Depth=2+d,DateTime=T0+timedelta(minutes=d),Area=150)
-        self.SaveBulkObjects()
+        for samplename in ("sample01","sampleT1"):
+            Sample=self.CreateSample(samplename)
+            Sampleid=Sample.sampleid # if faut memoriser les ID sinon ça fait un select à chaque fois qu'on le demande
+            T0=datetime(2019,11,21)
+            for d in range(100):
+                # Le time delta est de 4 heure car ça ne concerne que le sample T1 de uvp6
+                self.CreateOject(Sampleid,"Acantharea",Depth=2+d*2,DateTime=T0+timedelta(hours=4,seconds=d*20),Area=300-d)
+            for d in range(500):
+                self.CreateOject(Sampleid,"solitaryblack",Depth=2+d,DateTime=T0+timedelta(hours=4,seconds=d*20),Area=400-(d//2))
+                self.CreateOject(Sampleid,"solitarygrey" ,Depth=2+d , DateTime=T0 + timedelta(hours=4,seconds=d*20),Area=300 - (d // 3))
+            for d in range(1000):
+                self.CreateOject(Sampleid,"fiber<plastic",Depth=2+d*0.5,DateTime=T0+timedelta(hours=4,seconds=d*20),Area=200-(d // 10))
+                self.CreateOject(Sampleid,"fiber<detritus",Depth=2+d,DateTime=T0+timedelta(hours=4,seconds=d*20),Area=150)
+            self.SaveBulkObjects()
 
         nbr=database.GetAll("select count(*) nbr from obj_head where projid=%(projid)s",{'projid':self.projid})[0]['nbr']
         logging.info(f"Created {nbr} objects")
