@@ -93,6 +93,19 @@ def evaluate_sampleTypeAkeyValues(psampleid):
     assert res['sbiovol17'] == pytest.approx(3.139335)
     assert res['sclass18'] == pytest.approx(20100)
     assert res['sbiovol18'] == pytest.approx(1.915367)
+    sql="""select  classif_id, sum(watervolume)  swatervolume, sum(nbr)  snbr , sum(totalbiovolume) stotalbiovolume
+    from part_histocat  where psampleid=%s    group by classif_id"""
+    res = database.GetAssoc(sql, [psampleid])
+    assert res[11762]['snbr'] == 100
+    assert res[11762]['stotalbiovolume'] == pytest.approx(204.2602)
+    assert res[85036]['snbr'] == 500
+    assert res[85036]['stotalbiovolume'] == pytest.approx(1202.503)
+    assert res[85037]['snbr'] == 500
+    assert res[85037]['stotalbiovolume'] == pytest.approx(835.4788)
+    assert res[85057]['snbr'] == 1000
+    assert res[85057]['stotalbiovolume'] == pytest.approx(959.6036)
+    assert res[85076]['snbr'] == 1000
+    assert res[85076]['stotalbiovolume'] == pytest.approx(941.7783)
 
 
 def test_import_uvp6_uvpapp(app,caplog,tmpdir):
