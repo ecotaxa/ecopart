@@ -1,13 +1,11 @@
-from appli import db,app, database , ObjectToStr,PrintInCharte,gvp,gvg,VaultRootDir,DecodeEqualList,ntcv,EncodeEqualList,CreateDirConcurrentlyIfNeeded
+from appli import db,app
 from pathlib import Path
-import appli.part.database as partdatabase, logging,re,datetime,csv,math
+from appli.part.common_sample_import import GetPathForRawHistoFile
+import appli.part.database as partdatabase, logging,csv,bz2
 import numpy as np
-import matplotlib.pyplot as plt
 from appli import database
-from appli.part import PartDetClassLimit,CTDFixedCol
-from flask_login import current_user
+from appli.part import PartDetClassLimit
 from appli.part.common_sample_import import CleanValue,ToFloat,GenerateReducedParticleHistogram
-
 
 
 def CreateOrUpdateSample(pprojid,headerdata):
@@ -17,10 +15,9 @@ def CreateOrUpdateSample(pprojid,headerdata):
     :param headerdata:
     :return: Objet BD sample
     """
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=pprojid).first()
     for k,v in headerdata.items():
         headerdata[k]=CleanValue(v)
-    Sample=partdatabase.part_samples.query.filter_by(profileid=headerdata['profileid'],pprojid=pprojid).first()
+    Sample=db.session.query(partdatabase.part_samples).filter_by(profileid=headerdata['profileid'],pprojid=pprojid).first()
     if Sample is None:
         logging.info("Create LISST sample for %s %s"%(headerdata['profileid'],headerdata['filename']))
         Sample = partdatabase.part_samples()
@@ -52,8 +49,8 @@ def BuildLISSTClass(kerneltype):
         raise Exception("Invalide LISST kernel type '%s'"%kerneltype)
     LISSTClass = np.ndarray((32, 3))
     rho=np.power(200.0,1/32.0)
-    LISSTClass[:,0]=1.25*(np.power(rho,np.arange(0,32)))/1000
-    LISSTClass[:,1]=1.25*(np.power(rho,np.arange(1,33)))/1000
+    LISSTClass[:,0]=X*(np.power(rho,np.arange(0,32)))/1000
+    LISSTClass[:,1]=X*(np.power(rho,np.arange(1,33)))/1000
     LISSTClass[:,2]=np.sqrt(LISSTClass[:,0]*LISSTClass[:,1])
     return LISSTClass
 
@@ -64,7 +61,7 @@ def MapClasses(L,LISSTClass):
         # print ("%d %0.06f-%0.06f %g"%(i,LISSTClass[i,0],LISSTClass[i,1],q))
         if q!=0: # on ne passe pas du temps à essayer de ventiler 0
             #recherche des limites dans PartDetClassLimit
-            FirstClass = -1
+            FirstClass = LastClass = -1
             for ipd,pdl in enumerate(PartDetClassLimit):
                 if FirstClass<0 and pdl>LISSTClass[i,0]:
                     FirstClass=ipd-1
@@ -86,37 +83,57 @@ def MapClasses(L,LISSTClass):
     # print(np.sum(L),np.sum(Res),np.sum(L)-np.sum(Res))
     return Res
 
+
+def GenerateRawHistogram(psampleid):
+    """
+    Sur le lisst, c'est juste une copie du asc qui est stockée en format BZIP
+    :param psampleid:
+    :return: None
+    """
+    # PartSample= partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    PartSample = db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
+    if PartSample is None:
+        raise Exception("GenerateRawHistogram: Sample %d missing"%psampleid)
+
+    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=PartSample.pprojid).first()
+    ServerRoot = Path(app.config['SERVERLOADAREA'])
+    DossierUVPPath = ServerRoot / Prj.rawfolder
+    Fichier=DossierUVPPath/"work" / ( PartSample.filename+'.asc')
+    if not Fichier.exists() :
+        raise Exception(f"GenerateRawHistogram: file {Fichier.as_posix()} missing")
+    logging.info("Processing file " + Fichier.as_posix())
+
+    RawFile = GetPathForRawHistoFile(PartSample.psampleid)
+    with bz2.open(RawFile,"wb") as f,Fichier.open('rb') as fFichier:
+        f.write(fFichier.read())
+    PartSample.histobrutavailable=True
+    db.session.commit()
+
+
+
 def GenerateParticleHistogram(psampleid):
     """
     Génération de l'histogramme particulaire détaillé (45 classes) et réduit (15 classes) à partir du fichier ASC
     :param psampleid:
     :return:
     """
-    PartSample= partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    PartSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     if PartSample is None:
         raise Exception("GenerateRawHistogram: Sample %d missing"%psampleid)
     LISSTClass = BuildLISSTClass(PartSample.lisst_kernel)
 
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=PartSample.pprojid).first()
-    ServerRoot = Path(app.config['SERVERLOADAREA'])
-    DossierUVPPath = ServerRoot / Prj.rawfolder
-    Fichier=DossierUVPPath/"work" / ( PartSample.filename+'.asc')
-    logging.info("Processing file " + Fichier.as_posix())
-    NbrLine = 0
-    with Fichier.open() as csvfile:
-        for L in csvfile:
-            NbrLine += 1
-    logging.info("Line count %d"%NbrLine)
+    logging.info(f"Processing sample {psampleid} raw file")
     # Col0=Nbr Data pour calculer la moyenne , 1->45 Biovol cumulé puis moyénné
     HistoByTranche = np.zeros((1, 46))
-    with Fichier.open() as csvfile:
+    RawFile = GetPathForRawHistoFile(PartSample.psampleid)
+    with bz2.open(RawFile,'rt') as csvfile:
         Rdr = csv.reader(csvfile, delimiter=' ')
         for i, row in enumerate(Rdr):
             Depth = float(row[36])
             if PartSample.organizedbydeepth:
-                Tranche=Depth//5
+                Tranche=int(Depth//5)
             else:
-                Tranche=i//50
+                Tranche=int(i//50)
             Part = np.empty(32)
             for k in range(0, 32):
                 Part[k] = float(row[k])

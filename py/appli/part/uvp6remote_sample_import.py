@@ -1,4 +1,5 @@
 from ftplib import FTP
+from appli.part.common_sample_import import GetPathForRawHistoFile
 import appli.part.database as partdatabase, logging,re,datetime,csv,math,tempfile,shutil,zipfile
 from appli import db,app, database , ObjectToStr,PrintInCharte,gvp,gvg,VaultRootDir,DecodeEqualList,ntcv,EncodeEqualList
 import appli.part.uvp_sample_import as uvp_sample_import
@@ -197,7 +198,7 @@ class RemoteServerFetcher:
 
             db.session.commit()
             returnedsampleid.append(Sample.psampleid)
-            rawfileinvault = uvp_sample_import.GetPathForRawHistoFile(Sample.psampleid)
+            rawfileinvault = GetPathForRawHistoFile(Sample.psampleid)
             shutil.copyfile(TmpDir+'/raw.zip', rawfileinvault)
             # shutil.copyfile(MetaF.name, "c:/temp/testmeta.txt")
             # shutil.copyfile(TmpDir+'/raw.zip', "c:/temp/testremote.zip")
@@ -216,7 +217,7 @@ def GenerateParticleHistogram(psampleid):
     if PartSample is None:
         raise Exception("GenerateRawHistogram: Sample %d missing"%psampleid)
     Prj = partdatabase.part_projects.query.filter_by(pprojid=PartSample.pprojid).first()
-    rawfileinvault = uvp_sample_import.GetPathForRawHistoFile(PartSample.psampleid)
+    rawfileinvault = GetPathForRawHistoFile(PartSample.psampleid)
     DepthOffset = Prj.default_depthoffset
     if DepthOffset is None:
         DepthOffset=PartSample.acq_depthoffset
@@ -287,7 +288,7 @@ def GenerateTaxonomyHistogram(psampleid):
     if PartSample is None:
         raise Exception("GenerateTaxonomyHistogram: Sample %d missing"%psampleid)
     Prj = partdatabase.part_projects.query.filter_by(pprojid=PartSample.pprojid).first()
-    rawfileinvault = uvp_sample_import.GetPathForRawHistoFile(PartSample.psampleid)
+    rawfileinvault = GetPathForRawHistoFile(PartSample.psampleid)
     DepthOffset = Prj.default_depthoffset
     if DepthOffset is None:
         DepthOffset=PartSample.acq_depthoffset

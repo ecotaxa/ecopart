@@ -78,19 +78,20 @@ class TaskPartZooscanImport(AsyncTask):
                             logging.info("UVP Sample %d Metadata processed, Raw histogram in progress" % (psampleid,))
                             appli.part.uvp_sample_import.GenerateRawHistogram(psampleid)
                             self.UpdateProgress(100 * (NbrDone + 0.6) / Nbr,"Raw histogram of profile %s  processed, Particle histogram in progress" % (sample['profileid']))
-                            appli.part.uvp_sample_import.GenerateParticleHistogram(psampleid)
                             self.UpdateProgress(100 * (NbrDone + 0.7) / Nbr, "Particle histogram of profile %s  processed, CTD in progress" % (sample['profileid']))
                         if Prj.instrumtype == 'lisst':
                             logging.info("LISST Sample %d Metadata processed, Particle histogram in progress" % (psampleid,))
-                            appli.part.lisst_sample_import.GenerateParticleHistogram(psampleid)
+                            appli.part.lisst_sample_import.GenerateRawHistogram(psampleid)
                             self.UpdateProgress(100 * (NbrDone + 0.7) / Nbr,"Detailed histogram of profile %s  processed, CTD histogram in progress" % (sample['profileid']))
 
                         if Prj.instrumtype in ('uvp5','uvp6','lisst'):
                             appli.part.common_sample_import.ImportCTD(psampleid,self.param.user_name,self.param.user_email)
                             self.UpdateProgress(100 * (NbrDone + 0.95) / Nbr,"CTD of profile %s  processed" % (sample['profileid']))
 
-                    appli.part.prj.ComputeHistoDet(psampleid, Prj.instrumtype)
-                    appli.part.prj.ComputeHistoRed(psampleid, Prj.instrumtype)
+                    result=appli.part.prj.ComputeHistoDet(psampleid, Prj.instrumtype)
+                    logging.info(result)
+                    result=appli.part.prj.ComputeHistoRed(psampleid, Prj.instrumtype)
+                    logging.info(result)
                     if Prj.projid is not None : # on essaye de matcher que si on a un projet Ecotaxa
                         appli.part.prj.ComputeZooMatch(psampleid, Prj.projid)
                         appli.part.prj.ComputeZooHisto(psampleid, Prj.instrumtype)

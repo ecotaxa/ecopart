@@ -1,4 +1,5 @@
 from flask import render_template, g, flash,json,redirect
+from appli.part.common_sample_import import GetPathForRawHistoFile
 from appli import app,PrintInCharte,database,gvg,gvp,user_datastore,DecodeEqualList,ScaleForDisplay,ntcv
 from appli.database import GetAll,GetClassifQualClass,ExecSQL,db,GetAssoc
 from flask_login import current_user
@@ -77,7 +78,7 @@ class UvpSampleForm(Form):
     imp_descent_filtered_row = IntegerField("Descent filtered row", [validators.Optional(strip_whitespace=True)])
 
 def delete_sample(psampleid):
-    RawHistoFile=Path(sample_import.GetPathForRawHistoFile(psampleid))
+    RawHistoFile=Path(GetPathForRawHistoFile(psampleid))
     if RawHistoFile.exists():
         RawHistoFile.unlink()
     model = partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()

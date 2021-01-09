@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from appli.part.common_sample_import import GetPathForRawHistoFile
 from appli import db,app, database ,PrintInCharte,gvp,gvg,DecodeEqualList,ntcv
 from flask import render_template, g, flash,request
 import logging,os,csv,re,datetime
@@ -741,14 +742,14 @@ order by tree""".format(lstcatwhere)
                 for flash in ('0', '1'):
                     nomfichier="{0}_{1}_PAR_raw_{2}{3}.tsv".format(S['filename'],S['profileid'],DTNomFichier,'_black' if flash=='0' else '' )
                     fichier = os.path.join(self.GetWorkingDir(), nomfichier)
-                    raworigfile= uvp_sample_import.GetPathForRawHistoFile(S['psampleid'],flash)
+                    raworigfile= GetPathForRawHistoFile(S['psampleid'], flash)
                     if os.path.isfile(raworigfile):
                         with bz2.open(raworigfile,'rb') as rf,open(fichier,"wb") as rawtargetfile:
                             shutil.copyfileobj(rf,rawtargetfile)
                         zfile.write(nomfichier)
                         os.unlink(nomfichier)
             if S['histobrutavailable'] and S['instrumtype'] in ('uvp6remote'):
-                zfile.write(uvp_sample_import.GetPathForRawHistoFile(S['psampleid']),arcname="{0}_rawfiles.zip".format(S['profileid']))
+                zfile.write(GetPathForRawHistoFile(S['psampleid']), arcname="{0}_rawfiles.zip".format(S['profileid']))
         # fichiers CTD
         CTDFileParPSampleID = {}
         for S in samples:

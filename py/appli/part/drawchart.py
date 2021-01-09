@@ -1,15 +1,10 @@
-from flask import render_template, g, flash,json,make_response,request,send_file
-from appli import app,PrintInCharte,database,gvg,gvp,user_datastore,DecodeEqualList,ScaleForDisplay,ntcv
-from wtforms  import Form, BooleanField, StringField, validators,DateTimeField,IntegerField,FloatField,SelectField,TextAreaField
-from flask_login import current_user
+from flask import request,send_file
+from appli import app,database,gvg
 import appli.part.part_main as umain
 import matplotlib,io,math,traceback,matplotlib.dates,matplotlib.ticker
-# matplotlib.use('Agg')
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 import matplotlib.pyplot as plt
 import numpy as np
 from appli.part import PartDetClassLimit,PartRedClassLimit,GetClassLimitTxt,CTDFixedColByKey
-from matplotlib.ticker import FuncFormatter, MaxNLocator
 
 DepthTaxoHistoLimit=[0,25,50,75,100,125,150,200,250,300,350,400,450,500,600,700,800,900,1000,1250,1500,1750,2000,2250,2500,2750
     ,3000,3250,3500,3750,4000,4250,4500,4750,5000,5250,5500,5750,6000,7000,8000,9000,10000,11000,12000,13000,14000,15000,20000,50000]
@@ -54,10 +49,8 @@ def part_drawchart():
         gctd = request.args.getlist('ctd')
         gtaxo = request.args.getlist('taxolb')
         Filter = {k:v for k,v in request.args.items()}
-        ProfTypeVerticalForced=False
         if Filter.get('filt_proftype','')=='':
             Filter['filt_proftype']='V' # Si pas de filtre sur le type de profil ou tous, alors on met Vertical pour ne pas melanger les 2 ce qui donne des graphes incoherents
-            ProfTypeVerticalForced=True # pourrais être utile pour affiche un message, mais risque d'être un message parasite.
         ProfilVertical=Filter.get('filt_proftype', '') == 'V'
         if not ProfilVertical :
             gpd.append('depth') # si ce sont des profils temporels, on ajoute une trace pour les profondeurs
@@ -165,7 +158,7 @@ def part_drawchart():
                         if gvg('XScale') == 'S':
                             if ProfilVertical: graph[i].set_xscale('symlog')
                             else: graph[i].set_yscale('symlog')
-                    except Exception as e:
+                    except Exception:
                         # parfois s'il n'y a pas de données pas possible de passer en echelle log, on force alors linear sinon ça plante plus loin
                         if ProfilVertical: graph[i].set_xscale('linear')
                         else: graph[i].set_yscale('linear')
@@ -185,7 +178,7 @@ def part_drawchart():
                           for i,c in enumerate(gpd) if c[0:2]=="cl"])
             sql+=''.join([',coalesce(biovol%02d) as c%s'%(int(c[2:]),i)
                           for i,c in enumerate(gpd) if c[0:2]=="bv"])
-            sql+=''.join([',-coalesce(depth) as c%s'%(i)
+            sql+=''.join([',-coalesce(depth) as c%s'%i
                           for i,c in enumerate(gpd) if c=="depth"])
             sql += """ from part_histopart_det
              where psampleid=%(psampleid)s
@@ -240,7 +233,7 @@ def part_drawchart():
                         if gvg('XScale') == 'S':
                             if ProfilVertical: graph[i].set_xscale('symlog')
                             else: graph[i].set_yscale('symlog')
-                    except Exception as e:
+                    except Exception :
                         # parfois s'il n'y a pas de données pas possible de passer en echelle log, on force alors linear sinon ça plante plus loin
                         if ProfilVertical: graph[i].set_xscale('linear')
                         else: graph[i].set_yscale('linear')
@@ -305,21 +298,29 @@ def part_drawchart():
 
         # traitement des Graphes TAXO
         if len(gtaxo)>0:
-            # sql = "select depth y ,1000*nbr/watervolume as x from part_histocat h "
-            sql="select depth y ,nbr as x from part_histocat h "
+            if ProfilVertical:
+                sql="select depth y "
+            else:
+                sql = "select lineno y "
+                if TimeAbsolute:
+                    sql += " ,datetime"
+            sql+=" ,nbr as x  from part_histocat h "
             if gvg('taxochild')=='1':
                 sql += " join taxonomy t0 on h.classif_id=t0.id "
                 for i in range(1,15) :
                     sql += " left join taxonomy t{0} on t{1}.parent_id=t{0}.id ".format(i,i-1)
-            # sql += " where psampleid=%(psampleid)s  and ( classif_id = %(taxoid)s and watervolume>0"
             sql += " where psampleid=%(psampleid)s  and ( classif_id = %(taxoid)s "
             if gvg('taxochild') == '1':
                 for i in range(1, 15):
                     sql += " or t{}.id= %(taxoid)s".format(i)
             sql += " ){} order by Y""".format(DepthFilter)
+            if ProfilVertical:
+                TaxoHistoWaterVolumeSQLExpr=GetTaxoHistoWaterVolumeSQLExpr("depth")
+            else:
+                TaxoHistoWaterVolumeSQLExpr = "lineno"
             sqlWV =""" select {0} tranche,sum(watervolume) from part_histopart_det 
                     where psampleid=%(psampleid)s {1} group by tranche
-                    """.format(GetTaxoHistoWaterVolumeSQLExpr("depth"),DepthFilter )
+                    """.format(TaxoHistoWaterVolumeSQLExpr,DepthFilter )
             graph=list(range(0,len(gtaxo)))
             for i, c in enumerate(gtaxo):
                 NomTaxo = database.GetAll("""select concat(t.name,' (',p.name,')') nom 
@@ -329,19 +330,21 @@ def part_drawchart():
                 if gvg('taxochild') == '1':
                     NomTaxo += " and children"
                 graph[i]=Fig.add_subplot(FigSizeY,FigSizeX,chartid+1)
-                graph[i].set_xlabel('%s #/m3'%(NomTaxo))
-                # graph[i].set_yscale('log')
-                def format_fn(tick_val, tick_pos):
-                    if -int(tick_val) <len(DepthTaxoHistoLimit) and -int(tick_val) >=0:
-                        return DepthTaxoHistoLimit[-int(tick_val)]
+                XLabel =f'{NomTaxo} #/m3'
+                if not ProfilVertical:
+                    if TimeAbsolute:
+                        graph[i].xaxis.set_major_formatter(dateFormaterYMD())
+                        XLabel="X : date, Y : "+XLabel
                     else:
-                        return ''
+                        XLabel="X : time (hour), Y : "+XLabel
+                graph[i].set_xlabel(XLabel)
+                # graph[i].set_yscale('log')
+                # def format_fn(tick_val, tick_pos):
+                #     if -int(tick_val) <len(DepthTaxoHistoLimit) and -int(tick_val) >=0:
+                #         return DepthTaxoHistoLimit[-int(tick_val)]
+                #     else:
+                #         return ''
 
-                ##graph[i].yaxis.set_major_formatter(FuncFormatter(format_fn))
-                # graph[i].set_yticklabels(GetTaxoHistoLimit(20000))
-                # graph[i].set_yticklabels(["a","b","c"])
-                # graph[i].yticks(np.arange(5), ('Tom', 'Dick', 'Harry', 'Sally', 'Sue'))
-                ##graph[i].set_yticks(np.arange(0,-20,-1))
                 chartid += 1
                 for isample,rs in enumerate(samples):
                     if rs['visibility'][1]>='V': # Visible ou exportable
@@ -350,17 +353,18 @@ def part_drawchart():
                     else: # si pas le droit, on fait comme s'il n'y avait pas de données.
                         DBData=[]
                         WV = {}
-                    # print("{} =>{}".format(rs['psampleid'],WV))
+                    hist=[]
                     if len(DBData)>0:
                         data = np.empty((len(DBData), 2))
+                        TimeValues={}
                         for rnum,r in enumerate(DBData):
                             data[rnum]=(r['y'],r['x'])
-                        # hist,edge=np.histogram(data[:,0],bins=GetTaxoHistoLimit(data[:,0].max()),weights=data[:,1])
-                        # Y=(edge[:-1]+edge[1:])/2
-                        # graph[i].step(hist,Y)
-                        # graph[i].hist(data[:,0],bins=GetTaxoHistoLimit(data[:,0].max()),weights=data[:,1],histtype ='step',orientation ='horizontal')
-                        bins=GetTaxoHistoLimit(data[:,0].max())
-                        categ=-np.arange(len(bins)-1) #-isample*0.1
+                            if TimeAbsolute and not ProfilVertical:
+                                TimeValues[r['y']]=r['datetime']
+                        if ProfilVertical:
+                            bins=GetTaxoHistoLimit(data[:,0].max())
+                        else:
+                            bins = range(int(data[:,0].max())+2)
                         hist,edge=np.histogram(data[:,0],bins=bins,weights=data[:,1])
                         # print(hist)
                         for ih,h in enumerate(hist):
@@ -369,25 +373,43 @@ def part_drawchart():
                                     hist[ih]=1000*h/WV.get(edge[ih])
                                 else: hist[ih]=0
                         # print(hist,edge)
-                        # Y=-(edge[:-1]+edge[1:])/2 calcul du milieu de l'espace
-                        Y = -edge[:-1]
-                        # Y=categ
+
                         color = PrjColorMap[rs['pprojid']] if len(PrjColorMap) > 1 else \
                             (SampleColorMap[rs['psampleid']] if len(SampleColorMap) < 25 else None)
-                        graph[i].step(hist,Y,color=color)
-                        # bottom, top=graph[i].get_ylim()
-                        # bottom=min(bottom,categ.min()-1)
-                        # graph[i].set_ylim(bottom, top)
+                        if  ProfilVertical:
+                            Y = -edge[:-1]
+                            graph[i].step(hist,Y,color=color)
+                        else:
+                            if TimeAbsolute :
+                                X=np.empty(len(edge)-1)
+                                for ie in range(len(X)):
+                                    if ie in TimeValues :
+                                        X[ie]=matplotlib.dates.date2num(TimeValues.get(ie))
+                                    elif ie>0:
+                                        X[ie] =X[ie-1]+1/24 # si une valeur temps n'existe pas car générée par histogram
+
+                            else:
+                                X = edge[:-1]
+                            graph[i].step( X,hist, color=color)
                     bottom, top = graph[i].get_ylim()
-                    if gvg('filt_depthmin'):
-                        top=-float(gvg('filt_depthmin'))
-                    if gvg('filt_depthmax'):
-                        bottom=-float(gvg('filt_depthmax'))
-                    elif len(WV)>0:
-                        bottom =min(bottom,-max(WV.keys()))
-                    if top>0: top=0
-                    if bottom>=top:bottom=top-10
+                    if ProfilVertical:
+                        if gvg('filt_depthmin'):
+                            top=-float(gvg('filt_depthmin'))
+                        if gvg('filt_depthmax'):
+                            bottom=-float(gvg('filt_depthmax'))
+                        elif len(WV)>0:
+                            bottom =min(bottom,-max(WV.keys()))
+                        if top > 0: top = 0
+                        if bottom >= top: bottom = top - 10
+                    else:
+                        bottom=0
+                        if top<1:
+                            top=1
+                        if bottom >= top:
+                            top = bottom + 1
                     graph[i].set_ylim(bottom, top)
+                    graph[i].set_xscale('linear')
+                    graph[i].set_yscale('linear')
         # on ajuste la disposition avant de placer le dernier qui est en placement forcé et perturbe le tight_layout
         Fig.tight_layout()
         # generation du graphique qui liste les projets

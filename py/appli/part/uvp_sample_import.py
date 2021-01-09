@@ -1,13 +1,12 @@
-from appli import db,app, database , ObjectToStr,PrintInCharte,gvp,gvg,VaultRootDir,DecodeEqualList,ntcv,EncodeEqualList,CreateDirConcurrentlyIfNeeded
+from appli import db,app, VaultRootDir,DecodeEqualList, CreateDirConcurrentlyIfNeeded
 from pathlib import Path
 import appli.part.database as partdatabase, logging,re,datetime,csv,math
 import numpy as np,zipfile,configparser,io,bz2,sys
 import matplotlib.pyplot as plt
 from appli import database
-from appli.part import PartDetClassLimit,CTDFixedCol
-from flask_login import current_user
-from appli.part.common_sample_import import CleanValue,ToFloat,GetTicks,GenerateReducedParticleHistogram
-from appli.tasks.importcommon import ConvTextDegreeToDecimalDegree,calcesdFrom_aa_exp,calcpixelfromesd_aa_exp
+from appli.part import PartDetClassLimit
+from appli.part.common_sample_import import CleanValue, ToFloat, GetTicks, GenerateReducedParticleHistogram, GetPathForRawHistoFile
+from appli.tasks.importcommon import ConvTextDegreeToDecimalDegree, calcpixelfromesd_aa_exp
 
 def CreateOrUpdateSample(pprojid,headerdata):
     """
@@ -16,10 +15,10 @@ def CreateOrUpdateSample(pprojid,headerdata):
     :param headerdata:
     :return: Objet BD sample
     """
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=pprojid).first()
+    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=pprojid).first()
     for k,v in headerdata.items():
         headerdata[k]=CleanValue(v)
-    Sample=partdatabase.part_samples.query.filter_by(profileid=headerdata['profileid'],pprojid=pprojid).first()
+    Sample=db.session.query(partdatabase.part_samples).filter_by(profileid=headerdata['profileid'],pprojid=pprojid).first()
     if Sample is None:
         logging.info("Create UVP sample for %s %s"%(headerdata['profileid'],headerdata['filename']))
         Sample = partdatabase.part_samples()
@@ -33,7 +32,7 @@ def CreateOrUpdateSample(pprojid,headerdata):
         sampledatetxt=headerdata['sampledatetime'] #format uvpapp
     else:
         sampledatetxt=headerdata['filename'] #format historique uvp5
-    m = re.search("(\d{4})(\d{2})(\d{2})-?(\d{2})(\d{2})(\d{2})?", sampledatetxt) #YYYYMMDD-HHMMSS avec tiret central et secondes optionnelles
+    m = re.search(r"(\d{4})(\d{2})(\d{2})-?(\d{2})(\d{2})(\d{2})?", sampledatetxt) #YYYYMMDD-HHMMSS avec tiret central et secondes optionnelles
     Sample.sampledate=datetime.datetime(*[int(x) if x else 0 for x in m.group(1,2,3,4,5,6)])
     Sample.latitude = ConvTextDegreeToDecimalDegree(headerdata['latitude'], False) # false car dans les fichiers UVP historique c'est la notation degree.minute
     Sample.longitude = ConvTextDegreeToDecimalDegree(headerdata['longitude'], False)
@@ -85,6 +84,7 @@ def CreateOrUpdateSample(pprojid,headerdata):
             if 'ysize' in ConfigParam:
                 Sample.acq_ysize = int(ConfigParam['ysize'])
 
+    EcodataPartFile=None
     HDRFolder =  DossierUVPPath / "raw"/("HDR"+Sample.filename)
     HDRFile = HDRFolder/("HDR"+Sample.filename+".hdr")
     if not HDRFile.exists():
@@ -133,19 +133,12 @@ def CreateOrUpdateSample(pprojid,headerdata):
             Sample.acq_threshold = ToFloat(hw_conf.get('Threshold', ''))
             Sample.acq_smzoo = calcpixelfromesd_aa_exp( ToFloat(acq_conf.get('Vignetting_lower_limit_size', ''))/1000.0,Sample.acq_aa,Sample.acq_exp )
             Sample.acq_smbase = calcpixelfromesd_aa_exp( ToFloat(acq_conf.get('Limit_lpm_detection_size', ''))/1000.0,Sample.acq_aa,Sample.acq_exp )
-            if(hw_conf.get('Pressure_offset','')!=''):
+            if hw_conf.get('Pressure_offset','')!='':
                 if 0<=ToFloat(hw_conf.get('Pressure_offset', ''))<100:
                     Sample.acq_depthoffset = ToFloat(hw_conf.get('Pressure_offset', ''))
     db.session.commit()
     return Sample.psampleid
 
-def GetPathForRawHistoFile(psampleid,flash='1'):
-    VaultFolder = "partraw%04d" % (psampleid // 10000)
-    vaultroot = Path(VaultRootDir)
-    # creation du repertoire contenant les histogramme brut si necessaire
-    CreateDirConcurrentlyIfNeeded(vaultroot / VaultFolder)
-    # si flash est à 0 on ajoute .black dans le nom du fichier
-    return (vaultroot /VaultFolder/("%04d%s.tsv.bz2" %(psampleid % 10000,'.black' if flash=='0' else ''))).as_posix()
 
 def GetPathForImportGraph(psampleid,suffix,RelativeToVault=False):
     """
@@ -262,7 +255,7 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, De
                 else:
                     integrationtime=int(UvpSample.integrationtime)
                     if integrationtime<=0:
-                        raise Exception("GenerateRawHistogramUVPAPP: Sample %d : integrationtime must be a positive value for horizontal profile" % [UvpSample.psampleid])
+                        raise Exception(f"GenerateRawHistogramUVPAPP: Sample {UvpSample.psampleid} : integrationtime must be a positive value for horizontal profile" )
                     dateheure = datetime.datetime.strptime(dateheuretxt, "%Y%m%d-%H%M%S")
                     partts = (dateheure.timestamp() // integrationtime) * integrationtime # Conversion en TimeStamp, regroupement par integration time
                     Partition = int(datetime.datetime.fromtimestamp(partts).strftime("%Y%m%d%H%M%S")) # conversion en numerique YYYYMMDDHHMISS
@@ -301,7 +294,7 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, De
         if len(ImgDepth) == 0:
             raise Exception("No remaining filtered data in dat file")
 
-        DepthBinCount = GenerateDepthChart(Prj, UvpSample, RawImgDepth, ImgDepth)
+        GenerateDepthChart(Prj, UvpSample, RawImgDepth, ImgDepth)
         for flash in('0','1'):
             DetHistoFile = GetPathForRawHistoFile(UvpSample.psampleid,flash)
             with bz2.open(DetHistoFile, 'wt', newline='') as f:
@@ -339,10 +332,10 @@ def GenerateRawHistogram(psampleid):
     :param psampleid:
     :return: None    
     """
-    UvpSample= partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    UvpSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     if UvpSample is None:
         raise Exception("GenerateRawHistogram: Sample %d missing"%psampleid)
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=UvpSample.pprojid).first()
+    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=UvpSample.pprojid).first()
 
     FirstImage = int(UvpSample.firstimage)
     LastImage = int(UvpSample.lastimg)
@@ -403,6 +396,7 @@ def GenerateRawHistogram(psampleid):
     LastImageIdx=LastImageDepth=None
     if len(LstFichiers)==0:
         raise Exception("No dat files")
+    Fichier=None
     for Fichier in LstFichiers:
         logging.info("Processing file "+Fichier.as_posix())
         with Fichier.open(encoding='latin_1') as csvfile:
@@ -565,16 +559,16 @@ def GenerateParticleHistogram(psampleid):
     :param psampleid:
     :return:
     """
-    UvpSample= partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    UvpSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     if UvpSample is None:
         raise Exception("GenerateParticleHistogram: Sample %d missing"%psampleid)
     if not UvpSample.histobrutavailable:
         raise Exception("GenerateParticleHistogram: Sample %d Particle Histogram can't be computed without Raw histogram" % psampleid)
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=UvpSample.pprojid).first()
-    ServerRoot = Path(app.config['SERVERLOADAREA'])
-    DossierUVPPath = ServerRoot / Prj.rawfolder
+    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=UvpSample.pprojid).first()
     FirstImage = UvpSample.firstimage
     LastImage = UvpSample.lastimgused
+    # Juste utilisé sur les organizedbydeepth ou time déclarée pour supprimer warning
+    TimeParTranche = DepthParTranche = HeureDebut = None
     if LastImage is None: # Si aucune determinée lors de la génération de l'histogramme brut, on prend celle spécifiée dans le sample.
         LastImage = UvpSample.lastimg
     if FirstImage is None or LastImage is None:
@@ -780,14 +774,14 @@ def GenerateTaxonomyHistogram(psampleid):
     :param psampleid:
     :return:
     """
-    UvpSample= partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    UvpSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     if UvpSample is None:
         raise Exception("GenerateTaxonomyHistogram: Sample %d missing"%psampleid)
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=UvpSample.pprojid).first()
+    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=UvpSample.pprojid).first()
     if UvpSample.sampleid is None:
         raise Exception("GenerateTaxonomyHistogram: Ecotaxa sampleid required in Sample %d " % psampleid)
     pixel=UvpSample.acq_pixel
-    EcoPrj = database.Projects.query.filter_by(projid=Prj.projid).first()
+    EcoPrj = db.session.query(database.Projects).filter_by(projid=Prj.projid).first()
     if EcoPrj is None:
         raise Exception("GenerateTaxonomyHistogram: Ecotaxa project %d missing"%Prj.projid)
     objmap = DecodeEqualList(EcoPrj.mappingobj)
@@ -810,29 +804,45 @@ def GenerateTaxonomyHistogram(psampleid):
     #             WHERE sampleid={sampleid} and classif_id is not NULL and depth_min is not NULL and {areacol} is not NULL and classif_qual='V'
     #             group by classif_id,floor((depth_min+{DepthOffset})/5)"""
     #                         .format(sampleid=UvpSample.sampleid,areacol=areacol,DepthOffset=DepthOffset))
-    LstTaxoDet=database.GetAll("""select classif_id,floor((depth_min+{DepthOffset})/5) tranche,{areacol} areacol
+    Epoch0 = 0
+    if UvpSample.organizedbydeepth:
+        LstVol=database.GetAssoc("""select cast(round((depth-2.5)/5) as INT) tranche,watervolume from part_histopart_reduit where psampleid=%s"""%psampleid)
+        LstTaxoDet=database.GetAll("""select classif_id,floor((depth_min+{DepthOffset})/5) tranche,{areacol} areacol                            
                 from objects
                 WHERE sampleid={sampleid} and classif_id is not NULL and depth_min is not NULL and {areacol} is not NULL and classif_qual='V'
                 """
                                .format(sampleid=UvpSample.sampleid,areacol=areacol,DepthOffset=DepthOffset))
+    else: #to_char(objdate+objtime,'YYYYMMDD HH24:30') tranche
+        LstVol = database.GetAssoc(
+            """select cast(trunc(extract(epoch from datetime)/3600) as int) tranche,watervolume from part_histopart_reduit where psampleid=%s""" % psampleid)
+        if len(LstVol.keys())>0:
+            Epoch0=min(LstVol.keys())
+        LstVol={k-Epoch0: {'tranche':v['tranche']-Epoch0,'watervolume':v['watervolume']} for (k,v) in LstVol.items() }
+        LstTaxoDet = database.GetAll("""select classif_id,cast(trunc(extract(epoch from objdate+objtime)/3600) as int)-{Epoch0} tranche
+                    ,{areacol} areacol, to_char(objdate+objtime,'YYYYMMDD HH24:30:00') datetimetranche                         
+            from objects
+            WHERE sampleid={sampleid} and classif_id is not NULL and depth_min is not NULL and {areacol} is not NULL and classif_qual='V'
+            """
+                                 .format(sampleid=UvpSample.sampleid, areacol=areacol,Epoch0=Epoch0))
     LstTaxo = {}
     for r in LstTaxoDet:
         cle="{}/{}".format(r['classif_id'],r['tranche'])
         if cle not in LstTaxo:
             LstTaxo[cle]={'nbr':0,'esdsum':0,'bvsum':0,'classif_id':r['classif_id'],'tranche':r['tranche']}
+            if not UvpSample.organizedbydeepth:
+                LstTaxo[cle]['datetimetranche']=r['datetimetranche']
         LstTaxo[cle]['nbr']+=1
         esd=2*math.sqrt(r['areacol']*(pixel**2)/math.pi)
         LstTaxo[cle]['esdsum']+=esd
         biovolume =pow(esd/2,3)*4*math.pi/3
         LstTaxo[cle]['bvsum']+=biovolume
 
-    LstVol=database.GetAssoc("""select cast(round((depth-2.5)/5) as INT) tranche,watervolume from part_histopart_reduit where psampleid=%s"""%psampleid)
-    # 0 Taxoid, tranche
-    # TblTaxo=np.empty([len(LstTaxo),4])
+
     database.ExecSQL("delete from part_histocat_lst where psampleid=%s"%psampleid)
     database.ExecSQL("delete from part_histocat where psampleid=%s"%psampleid)
-    sql="""insert into part_histocat(psampleid, classif_id, lineno, depth, watervolume, nbr, avgesd, totalbiovolume)
-            values({psampleid},{classif_id},{lineno},{depth},{watervolume},{nbr},{avgesd},{totalbiovolume})"""
+    sql="insert "+"into part_histocat(psampleid, classif_id, lineno, depth,datetime, watervolume, nbr, avgesd, totalbiovolume) "
+    sql+=  "  values({psampleid},{classif_id},{lineno},{depth},{datetime},{watervolume},{nbr},{avgesd},{totalbiovolume})"
+    # 0 Taxoid, tranche
     for r in LstTaxo.values():
         avgesd=r['esdsum']/r['nbr']
         biovolume=r['bvsum']
@@ -840,7 +850,11 @@ def GenerateTaxonomyHistogram(psampleid):
         if r['tranche'] in LstVol:
             watervolume =LstVol[r['tranche']]['watervolume']
         database.ExecSQL(sql.format(
-            psampleid=psampleid, classif_id=r['classif_id'], lineno=r['tranche'], depth=r['tranche']*5+2.5, watervolume=watervolume
+            psampleid=psampleid, classif_id=r['classif_id']
+            , lineno=r['tranche']
+            , depth=r['tranche']*5+2.5 if UvpSample.organizedbydeepth else "null"
+            , datetime="null" if UvpSample.organizedbydeepth else f" to_timestamp('{r['datetimetranche']}','YYYYMMDD HH24:MI:SS')"
+            , watervolume=watervolume
             , nbr=r['nbr'], avgesd=avgesd, totalbiovolume=biovolume ))
     database.ExecSQL("""insert into part_histocat_lst(psampleid, classif_id) 
             select distinct psampleid,classif_id from part_histocat where psampleid=%s""" % psampleid)
@@ -848,6 +862,4 @@ def GenerateTaxonomyHistogram(psampleid):
     database.ExecSQL("""update part_samples set daterecalculhistotaxo=current_timestamp  
             where psampleid=%s""" % psampleid)
 
-    # TblTaxo[i,0:2]=r['avgarea'],r['nbr']
-    # TblTaxo[:,2]=
 
