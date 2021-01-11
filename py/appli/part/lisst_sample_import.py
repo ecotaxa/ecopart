@@ -119,7 +119,9 @@ def GenerateParticleHistogram(psampleid):
     """
     PartSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     if PartSample is None:
-        raise Exception("GenerateRawHistogram: Sample %d missing"%psampleid)
+        raise Exception("GenerateParticleHistogram: Sample %d missing"%psampleid)
+    if not PartSample.organizedbydeepth:
+        raise Exception("GenerateParticleHistogram: Sample %d , LISST support only organized by depth data" % psampleid)
     LISSTClass = BuildLISSTClass(PartSample.lisst_kernel)
 
     logging.info(f"Processing sample {psampleid} raw file")
