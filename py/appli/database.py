@@ -507,8 +507,16 @@ def GetAssoc2Col(sql, params=None, debug=False, dicttype=dict):
     return res
 
 
-# Les parametres doivent être passés au format (%s)
-def GetAll(sql, params=None, debug=False, cursor_factory=psycopg2.extras.DictCursor, doXSSEscape=False):
+def GetAll(sql:str, params=None, debug=False, cursor_factory=psycopg2.extras.DictCursor, doXSSEscape=False):
+    """
+    Execute un select
+    :param sql:
+    :param params: Les parametres doivent être passés au format (%s)
+    :param debug:
+    :param cursor_factory:
+    :param doXSSEscape:
+    :return:
+    """
     if g.db is None:
         g.db = db.engine.raw_connection()
     if doXSSEscape:

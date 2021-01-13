@@ -49,13 +49,14 @@ class TaskPartZooscanImport(AsyncTask):
             for sample in self.param.profilelistinheader:
                 if self.param.profiletoprocess.get(sample['profileid']):
                     LstSample.append(sample['profileid'])
-            print(LstSample)
+            # print(LstSample)
             LstSampleID=RSF.FetchServerDataForProject(LstSample)
-            print(LstSampleID)
+            # print(LstSampleID)
             if not self.param.ProcessOnlyMetadata:
                 for psampleid in LstSampleID:
                     logging.info("uvp6remote Sample %d Metadata processed, Détailled histogram in progress" % (psampleid,))
                     uvp6remote_sample_import.GenerateParticleHistogram(psampleid)
+                    uvp6remote_sample_import.GenerateTaxonomyHistogram(psampleid)
 
         else: # process normal par traitement du repertoire des données
             Nbr=0

@@ -89,7 +89,7 @@ class RemoteServerFetcher:
         for entry in lst:
             if entry[-4:] != '.txt':  # premier filtrage basique et silencieux
                 continue
-            m = re.fullmatch("""([^_]+)_([^_]+)_([^_]+)_([^_]+)\.txt""", entry)
+            m = re.fullmatch(r"([^_]+)_([^_]+)_([^_]+)_([^_]+)\.txt", entry)
             if m is None:
                 logging.warning("Particule RemoteServerFetcher.GetServerFiles Skip malformed file "+entry)
                 continue
@@ -237,20 +237,24 @@ def GenerateParticleHistogram(psampleid):
                 if PartSample.organizedbydeepth:
                     Tranche=(Depth//5)*5
                     DepthTranche=Tranche+2.5
+                    dateheure = datetime.datetime.strptime(Time, "%Y%m%dT%H%M%S")
                 else:
                     Tranche=Time[:-4] # On enlève minute et secondes
                     DepthTranche =Depth # on prend la premiere profondeur
+                    dateheure=None
                 NbrParClasse={}
                 # GreyParClasse = {}
                 NbrImg=float(L['IMAGE_NUMBER_PARTICLES'])
                 for classe in range(18):
                     NbrParClasse[classe]= round(ToFloat(L['NB_SIZE_SPECTRA_PARTICLES_class_%s'%(classe+1,)])*NbrImg)
                 if Tranche not in HistoByTranche:
-                    HistoByTranche[Tranche]={'NbrImg':NbrImg,'NbrParClasse':NbrParClasse,'DepthTranche':DepthTranche}#,'GreyParClasse':GreyParClasse
+                    HistoByTranche[Tranche]={'NbrImg':0,'NbrParClasse':NbrParClasse,'DepthTranche':DepthTranche,'timestamp':0}
                 else:
-                    HistoByTranche[Tranche]['NbrImg']+= NbrImg
                     for classe in range(18):
                         HistoByTranche[Tranche]['NbrParClasse'][classe] += NbrParClasse[classe]
+                HistoByTranche[Tranche]['NbrImg'] += NbrImg
+                if dateheure:
+                    HistoByTranche[Tranche]['timestamp'] += dateheure.timestamp()*NbrImg  # on va calculer l'heure moyenne, donc on fait la somme
             logging.info("Line count %d" % NbrLine)
 
 
@@ -269,6 +273,9 @@ def GenerateParticleHistogram(psampleid):
                 sqlparam['watervolume'] =round(HistoByTranche[Tranche]['NbrImg']*PartSample.acq_volimage,3)
                 if PartSample.organizedbydeepth:
                     sqlparam['datetime']=None
+                    if HistoByTranche[Tranche]['timestamp']:
+                        ts=round(HistoByTranche[Tranche]['timestamp']/HistoByTranche[Tranche]['NbrImg'],1)
+                        sqlparam['datetime']=datetime.datetime.fromtimestamp(ts)
                 else:
                     sqlparam['datetime'] = datetime.datetime.strptime(Tranche+'3000', "%Y%m%dT%H%M%S") # on insère avec l'heure à 30minutes
 
@@ -288,6 +295,8 @@ def GenerateTaxonomyHistogram(psampleid):
     if PartSample is None:
         raise Exception("GenerateTaxonomyHistogram: Sample %d missing"%psampleid)
     Prj = partdatabase.part_projects.query.filter_by(pprojid=PartSample.pprojid).first()
+    database.ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
+    database.ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
     rawfileinvault = GetPathForRawHistoFile(PartSample.psampleid)
     DepthOffset = Prj.default_depthoffset
     if DepthOffset is None:
@@ -313,7 +322,8 @@ def GenerateTaxonomyHistogram(psampleid):
                     if TaxoIds[i] not in TaxoDB:
                         raise Exception("GenerateTaxonomyHistogram: Sample %d category_name_%d is not a vlid taxoid" % (psampleid,(i+1)))
 
-
+        if 'taxo2.txt' not in [f.filename.lower() for f in zf.filelist]:
+            return
         with zf.open('TAXO2.txt','r') as ftaxob:
             ftaxo=io.TextIOWrapper(ftaxob,encoding='latin_1')
             csvfile=csv.DictReader(ftaxo, delimiter='\t')
@@ -335,8 +345,8 @@ def GenerateTaxonomyHistogram(psampleid):
                 SizeParClasse = {}
                 NbrImg=float(L['IMAGE_NUMBER_PLANKTON'])
                 for classe in range(40):
-                    NbrParClasse[classe]=ToFloat(L['NB_PLANKTON_cat_%s'%(classe+1,)])
-                    SizeParClasse[classe]=ToFloat(L['SIZE_PLANKTON_cat_%s'%(classe+1,)])
+                    NbrParClasse[classe]=ToFloat(L['NB_PLANKTON_cat_%s'%(classe+1,)]) or 0.0
+                    SizeParClasse[classe]=ToFloat(L['SIZE_PLANKTON_cat_%s'%(classe+1,)]) or 0.0
                     SizeParClasse[classe] =NbrParClasse[classe]*SizeParClasse[classe] if SizeParClasse[classe] else 0
                 if Tranche not in HistoByTranche:
                     HistoByTranche[Tranche]={'NbrImg':NbrImg,'NbrParClasse':NbrParClasse,'DepthTranche':DepthTranche
@@ -352,8 +362,6 @@ def GenerateTaxonomyHistogram(psampleid):
                         HistoByTranche[Tranche]['SizeParClasse'][classe] /= HistoByTranche[Tranche]['NbrParClasse'][classe]
             logging.info("Line count %d" % NbrLine)
 
-            database.ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
-            database.ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
             sql = """INSERT INTO part_histocat(psampleid, classif_id, lineno, depth, watervolume, nbr, avgesd, totalbiovolume)
                     VALUES(%(psampleid)s,%(classif_id)s,%(lineno)s,%(depth)s,%(watervolume)s,%(nbr)s,%(avgesd)s,%(totalbiovolume)s)"""
             sqlparam={'psampleid':psampleid}

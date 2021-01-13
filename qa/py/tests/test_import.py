@@ -1,21 +1,23 @@
 from os.path import dirname, realpath,join
 from pathlib import Path
 from appli import database,app,g,db,gvp,gvg,request
-from appli.part import database as dbpart
+from appli.part import database as dbpart,uvp6remote_sample_import
 from appli.tasks import taskmanager
 #from pytest_mock import mocker
-import pytest,logging,os
+import pytest,logging,os,re
 import unittest.mock
 from appli import appli
 from flask_login import current_user,login_user
 from sqlalchemy import Table, text
 import subprocess
 import runtask
-
+from pytest_httpserver import HTTPServer
+from werkzeug.wrappers import Response
+import requests
 
 HERE = Path(dirname(realpath(__file__)))
-DATA_DIR = (HERE / ".." / "data").resolve()
-DATA_DIR_tu1_uvp6uvpapp=DATA_DIR/"tu1_uvp6uvpapp"
+DATA_DIR = (HERE / ".." /  ".." / "data").resolve()
+
 
 @pytest.fixture
 def app():
@@ -82,31 +84,40 @@ def ShowOnWinmerge(File1,File2):
     # print(cmd)
     subprocess.call(cmd)
 
-def evaluate_sampleTypeAkeyValues(psampleid):
+def evaluate_sampleTypeAkeyValues(psampleid,CompareBiovolumePart=True,CompareZoo=True,NbrImage=1,Coeff=1.0,CompareBiovolumeZoo=True):
     """On teste des valeurs clés du sample, les # & BV des 2 premières classe et le watervolume"""
     sql = """select sum(watervolume) swatervolume,sum(class17) sclass17,sum(biovol17*watervolume) sbiovol17 
         ,sum(class18) sclass18 ,sum(biovol18*watervolume) sbiovol18
     from part_histopart_det t where psampleid=%s"""
     res = database.GetRow(sql, [psampleid])
-    assert res['swatervolume'] == pytest.approx(339)
-    assert res['sclass17'] == pytest.approx(75150)
-    assert res['sbiovol17'] == pytest.approx(3.139335)
-    assert res['sclass18'] == pytest.approx(20100)
-    assert res['sbiovol18'] == pytest.approx(1.915367)
-    sql="""select  classif_id, sum(watervolume)  swatervolume, sum(nbr)  snbr , sum(totalbiovolume) stotalbiovolume
-    from part_histocat  where psampleid=%s    group by classif_id"""
-    res = database.GetAssoc(sql, [psampleid])
-    assert res[11762]['snbr'] == 100
-    assert res[11762]['stotalbiovolume'] == pytest.approx(204.2602)
-    assert res[85036]['snbr'] == 500
-    assert res[85036]['stotalbiovolume'] == pytest.approx(1202.503)
-    assert res[85037]['snbr'] == 500
-    assert res[85037]['stotalbiovolume'] == pytest.approx(835.4788)
-    assert res[85057]['snbr'] == 1000
-    assert res[85057]['stotalbiovolume'] == pytest.approx(959.6036)
-    assert res[85076]['snbr'] == 1000
-    assert res[85076]['stotalbiovolume'] == pytest.approx(941.7783)
+    assert res['swatervolume'] == pytest.approx(339*NbrImage)
+    # le rel est utile pour les coeff 0.8 qui sur des valeur entières provoque des perte de particules entière à la génération,
+    # donc tolérence de 1% dans ces cas là
+    assert res['sclass17'] == pytest.approx(75150*NbrImage*Coeff,rel=0.01 if Coeff!=1 else 0)
+    assert res['sclass18'] == pytest.approx(20100*NbrImage*Coeff,rel=0.01 if Coeff!=1 else 0)
+    if CompareBiovolumePart:
+        assert res['sbiovol17'] == pytest.approx(3.139335*NbrImage*Coeff,rel=0.01 if Coeff!=1 else 1E-6)
+        assert res['sbiovol18'] == pytest.approx(1.915367*NbrImage*Coeff,rel=0.01 if Coeff!=1 else 1E-6)
+    if CompareZoo:
+        sql="""select  classif_id, sum(watervolume)  swatervolume, sum(nbr)  snbr , sum(totalbiovolume) stotalbiovolume
+        from part_histocat  where psampleid=%s    group by classif_id"""
+        res = database.GetAssoc(sql, [psampleid])
+        assert res[11762]['snbr'] == 100
+        assert res[85036]['snbr'] == 500
+        assert res[85037]['snbr'] == 500
+        assert res[85057]['snbr'] == 1000
+        assert res[85076]['snbr'] == 1000
+        if CompareBiovolumeZoo:
+            assert res[11762]['stotalbiovolume'] == pytest.approx(204.2602)
+            assert res[85036]['stotalbiovolume'] == pytest.approx(1202.503)
+            assert res[85037]['stotalbiovolume'] == pytest.approx(835.4788)
+            assert res[85057]['stotalbiovolume'] == pytest.approx(959.6036)
+            assert res[85076]['stotalbiovolume'] == pytest.approx(941.7783)
 
+def clean_existing_projectdata(pprojid:int):
+    for tbl in ('part_histopart_reduit','part_histopart_det','part_histocat','part_histocat_lst','part_histocat'):
+        database.ExecSQL(f"delete from {tbl} where psampleid in (select part_samples.psampleid from part_samples where pprojid={pprojid})")
+    database.ExecSQL(f"delete from part_samples where pprojid={pprojid}")
 
 def test_import_uvp6_uvpapp(app,caplog,tmpdir):
     caplog.set_level(logging.DEBUG)  # pour mise au point
@@ -115,6 +126,7 @@ def test_import_uvp6_uvpapp(app,caplog,tmpdir):
     if part_project is None:
         pytest.fail("UVPAPP Project Missing")
     pprojid=part_project.pprojid
+    clean_existing_projectdata(pprojid)
     with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","new_4": "sampleT1","new_5": "sampleT2","new_6": "sampleT3","starttask": "Y"}) as T:
         print(f"TaskID={T.TaskID}")
         T.RunTask()
@@ -126,6 +138,10 @@ def test_import_uvp6_uvpapp(app,caplog,tmpdir):
         Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
         Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
         SampleT1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT1").first()
+        Sample2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sample02").first()
+        SampleT2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sampleT2").first()
+        Sample3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample03").first()
+        SampleT3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT3").first()
 
         reffile=tmpdir.join("reffile.txt")
         datafile=tmpdir.join("datafile.txt")
@@ -140,6 +156,10 @@ def test_import_uvp6_uvpapp(app,caplog,tmpdir):
         assert cmpresult
         for sampleid in (Sample1.psampleid,SampleT1.psampleid):
             evaluate_sampleTypeAkeyValues(sampleid)
+        for sampleid in (Sample2.psampleid,SampleT2.psampleid):
+            evaluate_sampleTypeAkeyValues(sampleid,CompareZoo=False,NbrImage=2,Coeff=1.2)
+        for sampleid in (Sample3.psampleid,SampleT3.psampleid):
+            evaluate_sampleTypeAkeyValues(sampleid,CompareZoo=False,NbrImage=3,Coeff=0.8)
 
 
 def test_import_uvp5_BRU(app,caplog,tmpdir):
@@ -238,5 +258,78 @@ def test_import_lisst(app,caplog,tmpdir):
         assert res['biovol2324raw'] == pytest.approx(39.27267)
 
 
+@pytest.fixture
+def httpserver_listen_address():
+    return ("127.0.0.1", 5050)
+
+def HttpServeurStaticHandler(request)->Response:
+    if request.path.endswith('/'):
+        dir=DATA_DIR/request.path[1:-1]
+        result=""
+        for fichier in dir.glob("*"):
+            result += f"<a href='{fichier.name}'>{fichier.name}</a><br>"
+            # print(fichier.name)
+        return Response(result)
+    Fichier=DATA_DIR/request.path[1:]
+    return Response(Fichier.read_text())
+
+def test_import_uvp_remote_lambda_http(app,caplog,tmpdir,httpserver: HTTPServer):
+    caplog.set_level(logging.DEBUG)  # pour mise au point
+    caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
+    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP Remote Lambda HTTP").first()
+    if part_project is None:
+        pytest.fail("UVPAPP Project Missing")
+    pprojid=part_project.pprojid
+    clean_existing_projectdata(pprojid)
+    httpserver.expect_request("/TestDuServeurHTTP/").respond_with_data("OK permanent")
+    httpserver.expect_request(re.compile("^/")).respond_with_handler(HttpServeurStaticHandler)
+    # test des fonction qui emulent le serveur HTTP
+    assert requests.get("http://localhost:5050/TestDuServeurHTTP/").text == "OK permanent"
+    assert requests.get("http://localhost:5050/tu1_uvp6remotelambda/").text.startswith("<a")
+    assert requests.get("http://localhost:5050/tu1_uvp6remotelambda/sample01_UVPSN_DEPTH_BLACK.txt").text.startswith("DATE_TIME\t")
+    # print(httpserver.url_for("/tu1_uvp6remotelambda/"))
+
+    RSF = uvp6remote_sample_import.RemoteServerFetcher(pprojid)
+    Samples = RSF.GetServerFiles()
+    # print(Samples)
+    assert 'sample01' in Samples # test de la récupération de la liste des fichiers
+    assert len(Samples)==6
+    # return
+
+    with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"starttask": "Y"}) as T:
+        print(f"TaskID={T.TaskID}")
+        T.RunTask()
+        ExcludedCols=[f'biovol{i:02d}' for i in range (1,46)] # Les biovolumes ne sont pas calculés dans le modèle.
+        ExcludedCols.append('psampleid')
+        ExcludedCols.extend([f'class{i:02d}' for i in range (1,17)])
+        ExcludedCols.extend([f'class{i:02d}' for i in range(35, 46)])
+        part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        if part_project_ref is None:
+            pytest.fail("BRU Ref Project Missing")
+        Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
+        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
+        SampleT1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT1").first()
+        Sample2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sample02").first()
+        SampleT2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sampleT2").first()
+        Sample3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample03").first()
+        SampleT3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT3").first()
+
+        reffile=tmpdir.join("reffile.txt")
+        datafile=tmpdir.join("datafile.txt")
+        with open(reffile, "w") as fd:
+            dump_table(fd, dbpart.part_histopart_reduit, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
+            dump_table(fd, dbpart.part_histopart_det, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
+        with open(datafile, "w") as fd:
+            dump_table(fd, dbpart.part_histopart_reduit, f"psampleid={Sample1.psampleid}", skipcol=ExcludedCols)
+            dump_table(fd, dbpart.part_histopart_det, f"psampleid={Sample1.psampleid}", skipcol=ExcludedCols)
+        cmpresult=reffile.read() ==  datafile.read() # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
+        if not cmpresult: ShowOnWinmerge(reffile, datafile)
+        assert cmpresult
+        for sampleid in (Sample1.psampleid,SampleT1.psampleid):
+            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareBiovolumeZoo=False)
+        for sampleid in (Sample2.psampleid,SampleT2.psampleid):
+            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareZoo=False,NbrImage=2,Coeff=1.2)
+        for sampleid in (Sample3.psampleid,SampleT3.psampleid):
+            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareZoo=False,NbrImage=3,Coeff=0.8)
 
 

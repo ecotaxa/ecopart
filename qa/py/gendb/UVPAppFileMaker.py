@@ -3,7 +3,6 @@ from pathlib import Path
 from appli import database,app,g,db
 from appli.part import PartDetClassLimit
 from appli.tasks.importcommon import calcpixelfromesd_aa_exp
-from appli.part.uvp_sample_import import GetPathForRawHistoFile
 from appli.part.database import part_samples,part_histopart_det,part_projects
 import bz2, sys,logging,re,csv,configparser,zipfile
 from datetime import timedelta

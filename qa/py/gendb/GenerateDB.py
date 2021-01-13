@@ -6,8 +6,7 @@ import appli.part.prj as common_sample_import
 from appli.part import database as dbpart
 from appli.part.database import part_samples
 from sqlalchemy import text
-
-
+from gendb.UVPRemoteLambdaFileMaker import GenerateUVPRemoteLambdaFolder
 from gendb.ZooProjectGeneratorTypeA import ZooProjectGeneratorTypeA
 from gendb.PartProjectGeneratorTypeA import PartProjectGeneratorTypeA
 from gendb.PartProjectGeneratorTypeUVP6 import PartProjectGeneratorTypeUVP6
@@ -107,3 +106,7 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
     GenerateLISSTFolder(SrcProjectTitle="EcoPart TU Project UVP 6 from UVP APP" # pas le ref car on a besoin des Bv
                                      ,TargetProjectTitle="EcoPart TU Project LISST"
                                      ,DirName="tu1_lisst")
+
+    GenerateUVPRemoteLambdaFolder(SrcProjectTitle="EcoPart TU Project UVP 6 from UVP APP"
+                                  , TargetProjectTitle="EcoPart TU Project UVP Remote Lambda HTTP"
+                                  , DirName="tu1_uvp6remotelambda")

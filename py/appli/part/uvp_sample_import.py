@@ -516,6 +516,7 @@ def GenerateRawHistogram(psampleid):
 
 
 def GenerateDepthChart(Prj, UvpSample, RawImgDepth, ImgDepth):
+    plt.close('all')
     font = {'family': 'arial', 'weight': 'normal', 'size': 10}
     plt.rc('font', **font)
     plt.rcParams['lines.linewidth'] = 0.5
