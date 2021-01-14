@@ -1,21 +1,21 @@
-from os.path import dirname, realpath,join
+from os.path import dirname, realpath
 from pathlib import Path
-from appli import database,app,g,db
+from appli import app,g,db
 from appli.part import PartDetClassLimit
 from appli.tasks.importcommon import calcpixelfromesd_aa_exp
 from appli.part.database import part_samples,part_histopart_det,part_projects
-import bz2, sys,logging,re,csv,configparser,zipfile
+import re,csv,configparser,zipfile
 from datetime import timedelta
+# noinspection PyProtectedMember
 from sqlalchemy.orm.session import make_transient
 
 HERE = Path(dirname(realpath(__file__)))
 
-
-
+# noinspection DuplicatedCode
 def GenerateUVPAppFolder(SrcProjectTitle,TargetProjectTitle, DirName):
     with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL
         g.db = None
-        part_project=part_projects.query.filter_by(ptitle=SrcProjectTitle).first()
+        part_project=db.session.query(part_projects).filter_by(ptitle=SrcProjectTitle).first()
         originalpprojid=part_project.pprojid
         db.session.expunge(part_project)  # expunge the object from session
         make_transient(part_project)
@@ -40,7 +40,7 @@ def GenerateUVPAppFolder(SrcProjectTitle,TargetProjectTitle, DirName):
             fieldnames="cruise;ship;filename;profileid;bottomdepth;ctdrosettefilename;latitude;longitude;firstimage;volimage;aa;exp;dn;winddir;windspeed;seastate;nebuloussness;comment;endimg;yoyo;stationid;pixelsize;sampletype;integrationtime".split(';')
             w = csv.DictWriter(HeaderFile, delimiter=';', fieldnames=fieldnames )
             w.writeheader()
-            for S in part_samples.query.filter_by(pprojid=originalpprojid):
+            for S in db.session.query(part_samples).filter_by(pprojid=originalpprojid):
                 filename= S.sampledate.strftime('%Y%m%d%H%M%S')
                 HeaderRow={'cruise': "TestCruise","ship":"Testship",'profileid': S.profileid,
                             'filename': filename,
@@ -52,7 +52,7 @@ def GenerateUVPAppFolder(SrcProjectTitle,TargetProjectTitle, DirName):
                 SampleFolderPath= EcodataDirPath / ("%s"%S.profileid)
                 if not SampleFolderPath.exists():
                     SampleFolderPath.mkdir()
-                MetadataFilePath = SampleFolderPath / ("metadata.ini")
+                MetadataFilePath = SampleFolderPath / "metadata.ini"
                 write_config = configparser.ConfigParser()
                 write_config.add_section("HW_CONF")
                 write_config.set("HW_CONF", "Aa", str(S.acq_aa))
@@ -86,14 +86,14 @@ def GenerateUVPAppFolder(SrcProjectTitle,TargetProjectTitle, DirName):
                 with MetadataFilePath.open('w') as hdr:
                     print('Generate %s'%MetadataFilePath)
                     write_config.write(hdr)
-                PartFilePath=SampleFolderPath / ("particules.csv")
+                PartFilePath=SampleFolderPath / "particules.csv"
                 with PartFilePath.open('w',newline='') as PartFile:
                     PartFile.write("""HW_CONF,002,1,ACQ_ROV,0,002,1,150,250,169559,999.000,393819,2000,2,192.168.0.128,1,400,14,1,339,1.4389,73,0.630,20190207,201904050247,l.picheral,64,80.6,102,128,161,203,256,323,406,512,645,813,1020,1290,1630,2050,2580,3250,4100;
 
 ACQ_CONF,ACQ_ROV,2,2.000,1,1,0,0,1,1,70,2,700,2.0,50,10,0,1000,0,40,l.picheral,0,393714;
 """)
 
-                    for H in part_histopart_det.query.filter_by(psampleid=S.psampleid):
+                    for H in db.session.query(part_histopart_det).filter_by(psampleid=S.psampleid):
                         NbrImage =int(round (H.watervolume/S.acq_volimage))
                         # format des lignes de données YYYYMMDD-HHIISS,depth,Temperature,Flash (0 ou 1): Données particules
                         # Données particules sont des quartets de valeurs séparées par des virgules
@@ -116,13 +116,10 @@ ACQ_CONF,ACQ_ROV,2,2.000,1,1,0,0,1,1,70,2,700,2.0,50,10,0,1000,0,40,l.picheral,0
                                 LineDate.strftime('%Y%m%d-%H%M%S'),H.depth,";".join(PartDatas)
                             ))
                 # Les fichiers sont générés, on les mets dans le .zip
-                PartZipFilePath = SampleFolderPath / (f"{S.profileid}_Particule.zip")
+                PartZipFilePath = SampleFolderPath / f"{S.profileid}_Particule.zip"
                 with zipfile.ZipFile(PartZipFilePath, "w", allowZip64=True, compression=zipfile.ZIP_DEFLATED) as zf:
                     zf.write(MetadataFilePath,"metadata.ini")
                     zf.write(PartFilePath,"particules.csv")
-
-
-
 
 if __name__ == "__main__":
     GenerateUVPAppFolder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed"

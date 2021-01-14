@@ -1,8 +1,5 @@
-#from gendb.ZooProjectGenerator import ZooProjectGenerator
 from appli import db
-from appli.part import database
-import typing, appli, math, logging
-from datetime import datetime, timedelta
+import  logging
 from PartProjectGeneratorTypeA import PartProjectGeneratorTypeA
 
 # Similaire au type A mais avec des sample de type Time en plus

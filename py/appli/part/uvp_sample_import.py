@@ -296,8 +296,8 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, De
 
         GenerateDepthChart(Prj, UvpSample, RawImgDepth, ImgDepth)
         for flash in('0','1'):
-            DetHistoFile = GetPathForRawHistoFile(UvpSample.psampleid,flash)
-            with bz2.open(DetHistoFile, 'wt', newline='') as f:
+            RawHistoFile = GetPathForRawHistoFile(UvpSample.psampleid,flash)
+            with bz2.open(RawHistoFile, 'wt', newline='') as f:
                 cf = csv.writer(f, delimiter='\t')
                 HeaderColsName=["depth", "imgcount", "area", "nbr", "greylimit1", "greylimit2", "greylimit3","datetime"]
                 # if organizedbytime:
@@ -494,9 +494,9 @@ def GenerateRawHistogram(psampleid):
                 SegmentedData[Partition]['area'][area].append(grey)
 
 
-    DetHistoFile =GetPathForRawHistoFile(psampleid)
+    RawHistoFile =GetPathForRawHistoFile(psampleid)
     import bz2
-    with bz2.open(DetHistoFile, 'wt', newline='') as f:
+    with bz2.open(RawHistoFile, 'wt', newline='') as f:
         cf=csv.writer(f,delimiter='\t')
         cf.writerow(["depth","imgcount","area","nbr","greylimit1","greylimit2","greylimit3"])
         for Partition,PartitionContent in SegmentedData.items():
@@ -532,6 +532,7 @@ def GenerateDepthChart(Prj, UvpSample, RawImgDepth, ImgDepth):
     ax.set_xlabel('Image nb')
     ax.set_ylabel('Depth(m)')
     ax.set_xticks(np.arange(0, aRawImgDepth[:, 0].max(), 5000))
+    # noinspection PyUnusedLocal
     aRawImgDepth = RawImgDepth = None  # libère la mémoire des données brutes, elle ne sont plus utile une fois le graphe tracé
     # courbe rouge des données réduites à first==>Last et filtrées
     aFilteredImgDepth = np.empty([len(ImgDepth), 2])
@@ -542,6 +543,7 @@ def GenerateDepthChart(Prj, UvpSample, RawImgDepth, ImgDepth):
     MaxDepth = aFilteredImgDepth[:, 1].max()
     # Calcule le nombre d'image par mettre à partir de 0m
     DepthBinCount = np.bincount(np.floor(aFilteredImgDepth[:, 1]).astype('int'))
+    # noinspection PyUnusedLocal
     aFilteredImgDepth = None  # version nparray plus necessaire.
     logging.info("Depth range= {0}->{1}".format(MinDepth, MaxDepth))
     # Fig.savefig((DossierUVPPath / 'results' / ('ecotaxa_depth_' + UvpSample.profileid+'.png')).as_posix())
@@ -808,6 +810,7 @@ def GenerateTaxonomyHistogram(psampleid):
     Epoch0 = 0
     if UvpSample.organizedbydeepth:
         LstVol=database.GetAssoc("""select cast(round((depth-2.5)/5) as INT) tranche,watervolume from part_histopart_reduit where psampleid=%s"""%psampleid)
+        # noinspection SqlResolve
         LstTaxoDet=database.GetAll("""select classif_id,floor((depth_min+{DepthOffset})/5) tranche,{areacol} areacol                            
                 from objects
                 WHERE sampleid={sampleid} and classif_id is not NULL and depth_min is not NULL and {areacol} is not NULL and classif_qual='V'
@@ -819,6 +822,7 @@ def GenerateTaxonomyHistogram(psampleid):
         if len(LstVol.keys())>0:
             Epoch0=min(LstVol.keys())
         LstVol={k-Epoch0: {'tranche':v['tranche']-Epoch0,'watervolume':v['watervolume']} for (k,v) in LstVol.items() }
+        # noinspection SqlResolve
         LstTaxoDet = database.GetAll("""select classif_id,cast(trunc(extract(epoch from objdate+objtime)/3600) as int)-{Epoch0} tranche
                     ,{areacol} areacol, to_char(objdate+objtime,'YYYYMMDD HH24:30:00') datetimetranche                         
             from objects

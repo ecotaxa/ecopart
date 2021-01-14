@@ -1,38 +1,20 @@
-from os.path import dirname, realpath,join
+from os.path import dirname, realpath
 from pathlib import Path
-from appli import database,app,g,db
+from appli import app,g,db
 from appli.part import PartDetClassLimit
 from appli.tasks.importcommon import calcpixelfromesd_aa_exp
-from appli.part.uvp_sample_import import GetPathForRawHistoFile
 from appli.part.database import part_samples,part_histopart_det,part_projects
-import bz2, sys,logging,re,csv,configparser
+import re,csv,configparser
+# noinspection PyProtectedMember
 from sqlalchemy.orm.session import make_transient
 
 HERE = Path(dirname(realpath(__file__)))
 
-
-def GenerateRawFileForSample(UvpSample):
-    DetHistoFile =GetPathForRawHistoFile(UvpSample.psampleid)
-    with bz2.open(DetHistoFile, 'wt', newline='') as f:
-        cf=csv.writer(f,delimiter='\t')
-        cf.writerow(["depth","imgcount","area","nbr","greylimit1","greylimit2","greylimit3"])
-        for Partition,PartitionContent in SegmentedData.items():
-            for area,greydata in PartitionContent['area'].items():
-                # if area in ('depth', 'time'): continue  # ces clés sont au même niveau que les area
-                agreydata=np.asarray(greydata)
-                # ça ne gère pas l'organisation temporelle des données
-                cf.writerow([PartitionContent['depth'],PartitionContent['imgcount'],area,len(agreydata)
-                                ,np.percentile(agreydata,25,interpolation='lower')
-                                , np.percentile(agreydata, 50, interpolation='lower')
-                                , np.percentile(agreydata, 75, interpolation='higher')]
-                            )
-    UvpSample.histobrutavailable=True
-    db.session.commit()
-
+# noinspection DuplicatedCode
 def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="bru"):
     with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL
         g.db = None
-        part_project=part_projects.query.filter_by(ptitle=SrcProjectTitle).first()
+        part_project=db.session.query(part_projects).filter_by(ptitle=SrcProjectTitle).first()
         originalpprojid=part_project.pprojid
         db.session.expunge(part_project)  # expunge the object from session
         make_transient(part_project)
@@ -56,7 +38,7 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="br
             fieldnames="cruise;ship;filename;profileid;bottomdepth;ctdrosettefilename;latitude;longitude;firstimage;volimage;aa;exp;dn;winddir;windspeed;seastate;nebuloussness;comment;endimg;yoyo;stationid;pixelsize".split(';')
             w = csv.DictWriter(HeaderFile, delimiter=';', fieldnames=fieldnames )
             w.writeheader()
-            for S in part_samples.query.filter_by(pprojid=originalpprojid):
+            for S in db.session.query(part_samples).filter_by(pprojid=originalpprojid):
                 filename= S.sampledate.strftime('%Y%m%d%H%M%S')
                 w.writerow({'cruise': "TestCruise","ship":"Testship",'profileid': S.profileid,
                             'filename': filename,
@@ -94,7 +76,7 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="br
                         BruFile.write("index;	blob;	area;	meangrey;	xcenter;	ycenter;\r\n")
                     else:
                         BruFile.write("index;	image;	blob;	area;	meangrey;	xcenter;	ycenter;\r\n")
-                    for H in part_histopart_det.query.filter_by(psampleid=S.psampleid):
+                    for H in db.session.query(part_histopart_det).filter_by(psampleid=S.psampleid):
                         NbrImage =int(round (H.watervolume/S.acq_volimage))
                         for noimg in range(NbrImage):
                             wDat.writerow({'index':H.lineno*NbrImage+noimg+1, #+1 car il ne faut pas l'index à 0

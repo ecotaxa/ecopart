@@ -1,9 +1,8 @@
 from ftplib import FTP
 from appli.part.common_sample_import import GetPathForRawHistoFile
-import appli.part.database as partdatabase, logging,re,datetime,csv,math,tempfile,shutil,zipfile
-from appli import db,app, database , ObjectToStr,PrintInCharte,gvp,gvg,VaultRootDir,DecodeEqualList,ntcv,EncodeEqualList
-import appli.part.uvp_sample_import as uvp_sample_import
-from appli.part.common_sample_import import CleanValue,ToFloat,GenerateReducedParticleHistogram
+import appli.part.database as partdatabase, logging,re,datetime,csv,tempfile,shutil,zipfile
+from appli import db, database , ntcv
+from appli.part.common_sample_import import ToFloat,GenerateReducedParticleHistogram
 import numpy as np,io
 from html.parser import HTMLParser
 import urllib.request,ssl,os
@@ -27,6 +26,9 @@ class ATagParser(HTMLParser):
         fichier=os.path.basename(href)
         self.FoundA.append(fichier)
 
+    def error(self, message):
+        pass
+
 
 def ParseMetadataFile(MetaF):
     MetaData = {}
@@ -39,7 +41,7 @@ def ParseMetadataFile(MetaF):
 
 class RemoteServerFetcher:
     def __init__(self, pprojid:int):
-        self.Prj = partdatabase.part_projects.query.filter_by(pprojid=pprojid).first()
+        self.Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=pprojid).first()
         self.ftp=None
 
     def Connect(self):
@@ -130,7 +132,7 @@ class RemoteServerFetcher:
         """
         returnedsampleid=[]
         ServerSamples=self.GetServerFiles()
-        DBSamples=partdatabase.part_samples.query.filter_by(pprojid=self.Prj.pprojid)
+        DBSamples=db.session.query(partdatabase.part_samples).filter_by(pprojid=self.Prj.pprojid)
         DBSamplesNames={s.profileid:s for s in DBSamples}
         if len(ForcedSample)==0:
             ForcedSample=None
@@ -183,6 +185,7 @@ class RemoteServerFetcher:
                 Sample.acq_depthoffset= ToFloat(MetaData.get('pressure_offset', ''))
 
             # Lat,Long et Date sont les moyennes du fichier LPM
+            # noinspection PyTypeChecker
             SamplesData=np.genfromtxt(TmpDir+"/LPM",names=True,delimiter='\t',autostrip=True
                                       ,usecols=['DATE_TIME','LATITUDE_decimal_degree','LONGITUDE_decimal_degree']
                                       #,usecols=[0,2,3]
@@ -207,16 +210,16 @@ class RemoteServerFetcher:
         return returnedsampleid
 
 
-def GenerateParticleHistogram(psampleid):
+def GenerateParticleHistogram(psampleid:int):
     """
     Génération de l'histogramme particulaire détaillé (45 classes) et réduit (15 classes) à partir du fichier ASC
     :param psampleid:
     :return:
     """
-    PartSample= partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    PartSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     if PartSample is None:
         raise Exception("GenerateRawHistogram: Sample %d missing"%psampleid)
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=PartSample.pprojid).first()
+    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=PartSample.pprojid).first()
     rawfileinvault = GetPathForRawHistoFile(PartSample.psampleid)
     DepthOffset = Prj.default_depthoffset
     if DepthOffset is None:
@@ -285,16 +288,16 @@ def GenerateParticleHistogram(psampleid):
                 database.ExecSQL(sql,sqlparam)
     GenerateReducedParticleHistogram(psampleid)
 
-def GenerateTaxonomyHistogram(psampleid):
+def GenerateTaxonomyHistogram(psampleid:int):
     """
     Génération de l'histogramme Taxonomique
     :param psampleid:
     :return:
     """
-    PartSample= partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    PartSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     if PartSample is None:
         raise Exception("GenerateTaxonomyHistogram: Sample %d missing"%psampleid)
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=PartSample.pprojid).first()
+    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=PartSample.pprojid).first()
     database.ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
     database.ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
     rawfileinvault = GetPathForRawHistoFile(PartSample.psampleid)

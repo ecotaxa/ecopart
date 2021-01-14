@@ -192,7 +192,7 @@ t17=exposure"""
 
     def GetTaxoByName(self, Name):
         if Name not in self.TaxoCache:
-            self.TaxoCache[Name] = database.Taxonomy.query.filter_by(display_name=Name).first().id
+            self.TaxoCache[Name] = db.session.query(database.Taxonomy).filter_by(display_name=Name).first().id
         return self.TaxoCache[Name]
 
     def SaveBulkObjects(self):

@@ -1,6 +1,6 @@
 from os.path import dirname, realpath,join
 from pathlib import Path
-import sys,logging,re,csv,configparser
+import logging
 from appli import database,app,g,db
 import appli.part.prj as common_sample_import
 from appli.part import database as dbpart
@@ -57,8 +57,8 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
 
     PartPrj = PartProjectGeneratorTypeA()
     PartPrj.Generate("EcoPart TU Project UVP 2 Precomputed")
-    for S in part_samples.query.filter_by(pprojid=PartPrj.pprojid) :
-        common_sample_import.ComputeHistoRed(S.psampleid,'uvp5')
+    for S in db.session.query(part_samples).filter_by(pprojid=PartPrj.pprojid) :
+        common_sample_import.ComputeHistoRed(S.psampleid)
         common_sample_import.ComputeZooMatch(S.psampleid,PartPrj.Zooprojid)
     db.session.commit() # Requis car sinon cette transaction ne voit pas les modifications faites en SQL
     # db.get_engine().echo=True # Permet d'activer l'echo mais en double exemplaire
@@ -68,7 +68,7 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
     #                              {'pprojid': PartPrj.pprojid}):
     #    common_sample_import.ComputeZooHisto(S['psampleid'], 'uvp5')
     # for S in part_samples.query.filter_by(pprojid=PartPrj.pprojid).filter(part_samples.sampleid != None): # Marche aussi
-    for S in part_samples.query.filter_by(pprojid=PartPrj.pprojid).filter(text("sampleid is not null")):
+    for S in db.session.query(part_samples).filter_by(pprojid=PartPrj.pprojid).filter(text("sampleid is not null")):
             common_sample_import.ComputeZooHisto(S.psampleid,'uvp5')
     logging.info("Detailled & Zoo Computed")
 # pour voir le résultat du projet N°2 computed, doit ête identique à PartProjectTU1Graph.png
@@ -94,7 +94,7 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
                                          , DirName="tu1_uvp6uvpapp")
 
     # On importe les données car c'est requis pour générer les données du LISST
-    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 6 from UVP APP").first()
+    part_project = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 6 from UVP APP").first()
     if part_project is None:
         raise Exception("UVPAPP Project Missing")
     from tests.test_import import TaskInstance

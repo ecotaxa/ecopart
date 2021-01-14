@@ -1,12 +1,9 @@
-from appli import db,app, database , ObjectToStr,PrintInCharte,gvp,gvg,VaultRootDir,DecodeEqualList,ntcv,EncodeEqualList,CreateDirConcurrentlyIfNeeded
+from appli import db,app, VaultRootDir,EncodeEqualList,CreateDirConcurrentlyIfNeeded
 from pathlib import Path
-import appli.part.database as partdatabase, logging,re,datetime,csv,math,zipfile,io
+import appli.part.database as partdatabase, datetime,csv,math,zipfile,io
 import numpy as np
-import matplotlib.pyplot as plt
 from appli import database
-from appli.part import PartDetClassLimit,CTDFixedCol
-from flask_login import current_user
-
+from appli.part import CTDFixedCol
 
 # Purge les espace et converti le Nan en vide
 def CleanValue(v):
@@ -89,16 +86,17 @@ def GenerateReducedParticleHistogram(psampleid):
 def ImportCTD(psampleid,user_name,user_email):
     """
     Importe les données CTD 
+    :param user_email:
+    :param user_name:
     :param psampleid:
     :return:
     """
 
-    UvpSample= partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    UvpSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     if UvpSample is None:
         raise Exception("ImportCTD: Sample %d missing"%psampleid)
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=UvpSample.pprojid).first()
+    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=UvpSample.pprojid).first()
     if Prj.instrumtype == 'uvp6remote':
-        import appli.part.uvp_sample_import as uvp_sample_import
         rawfileinvault = GetPathForRawHistoFile(UvpSample.psampleid)
         zf=zipfile.ZipFile(rawfileinvault, "r")
         if 'CTD.txt' not in zf.namelist() :
@@ -153,8 +151,8 @@ def ImportCTD(psampleid,user_name,user_email):
         cl=partdatabase.part_ctd()
         cl.psampleid=psampleid
         cl.lineno=i
-        for i,c in enumerate(Mapping):
-            v=CleanValue(r[i])
+        for j,c in enumerate(Mapping):
+            v=CleanValue(r[j])
             if v!='':
                 if c=='qc_flag':
                     setattr(cl, c, int(float(v)))

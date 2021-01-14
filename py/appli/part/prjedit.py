@@ -1,13 +1,13 @@
-from flask import render_template, g, flash,json,redirect
-from appli import app,PrintInCharte,database,gvg,gvp,user_datastore,DecodeEqualList,ScaleForDisplay,ntcv,ErrorFormat
-from appli.database import GetAll,GetClassifQualClass,ExecSQL,db,GetAssoc
+from flask import json,redirect
+from appli import app,PrintInCharte,database,gvg,gvp,ErrorFormat
+from appli.database import db
 from flask_login import current_user
 from flask import render_template,  flash,request,g
 from pathlib import Path
-import appli,logging,appli.part.uvp_sample_import as sample_import
-import appli.part.database as partdatabase,collections,re,csv
+import appli
+import appli.part.database as partdatabase,re,csv
 from flask_security import login_required
-from wtforms  import Form, BooleanField, StringField, validators,DateTimeField,IntegerField,FloatField,SelectField,TextAreaField
+from wtforms  import Form, StringField, validators,IntegerField,FloatField,SelectField,TextAreaField
 
 class UvpPrjForm(Form):
     ptitle = StringField("Particle Project title")
@@ -43,7 +43,7 @@ class UvpPrjForm(Form):
 def part_prjedit(pprojid):
     g.headcenter="<h3>Particle Project Metadata edition</h3>"
     if pprojid>0:
-        model = partdatabase.part_projects.query.filter_by(pprojid=pprojid).first()
+        model = db.session.query(partdatabase.part_projects).filter_by(pprojid=pprojid).first()
         if model.ownerid!=current_user.id and not current_user.has_role(database.AdministratorLabel):
             return PrintInCharte(ErrorFormat("Access Denied"))
     else:
@@ -94,6 +94,7 @@ def part_prjedit(pprojid):
             model.projid = EcotaxaProject.projid # On affecte le nouveau projet au projet Particle.
         db.session.commit()
         return redirect("/part/prj/"+str(model.pprojid))
+    # noinspection PyUnresolvedReferences
     return PrintInCharte(render_template("part/prjedit.html", form=form, prjid=model.pprojid))
 
 

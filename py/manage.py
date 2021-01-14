@@ -313,7 +313,7 @@ def RecomputePart(ProjectID, What, User, Email):
             if 'D' in What:
                 print("Det=", prj.ComputeHistoDet(S['psampleid'], Prj.instrumtype))
             if 'R' in What:
-                print("Red=", prj.ComputeHistoRed(S['psampleid'], Prj.instrumtype))
+                print("Red=", prj.ComputeHistoRed(S['psampleid']))
             if 'M' in What:
                 print("Match=", prj.ComputeZooMatch(S['psampleid'], Prj.projid))
             if 'C' in What:

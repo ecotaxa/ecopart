@@ -1,21 +1,21 @@
-from os.path import dirname, realpath,join
+from os.path import dirname, realpath
 from pathlib import Path
 from appli import database,app,g,db
-from appli.part import PartDetClassLimit
-from appli.tasks.importcommon import calcpixelfromesd_aa_exp
 from appli.part.database import part_samples,part_histopart_det,part_projects
-import bz2, sys,logging,re,csv,configparser,zipfile
+import csv
 from datetime import timedelta
+# noinspection PyProtectedMember
 from sqlalchemy.orm.session import make_transient
 
 HERE = Path(dirname(realpath(__file__)))
 
 
 
+# noinspection DuplicatedCode
 def GenerateUVPRemoteLambdaFolder(SrcProjectTitle,TargetProjectTitle, DirName):
     with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL
         g.db = None
-        part_project=part_projects.query.filter_by(ptitle=SrcProjectTitle).first()
+        part_project=db.session.query(part_projects).filter_by(ptitle=SrcProjectTitle).first()
         originalpprojid=part_project.pprojid
         db.session.expunge(part_project)  # expunge the object from session
         make_transient(part_project)
@@ -31,7 +31,7 @@ def GenerateUVPRemoteLambdaFolder(SrcProjectTitle,TargetProjectTitle, DirName):
         FullDirPath=(HERE / '../../..' / part_project.rawfolder).resolve(False)
         if not FullDirPath.exists():
             FullDirPath.mkdir()
-        for S in part_samples.query.filter_by(pprojid=originalpprojid):
+        for S in db.session.query(part_samples).filter_by(pprojid=originalpprojid):
             filenamePrefix = f"{S.profileid}_UVPSN_"+('DEPTH' if S.organizedbydeepth else 'TIME')
             metaFilePath = FullDirPath / (filenamePrefix + '_META.txt')
             lpmFilePath = FullDirPath / (filenamePrefix + '_LPM.txt')
@@ -100,7 +100,7 @@ Lower_limit_size_class_18	2050
                 wlpmFile.writeheader()
                 wblackFile = csv.DictWriter(blackFile, delimiter='\t', fieldnames=LPMCols)
                 wblackFile.writeheader()
-                for H in part_histopart_det.query.filter_by(psampleid=S.psampleid):
+                for H in db.session.query(part_histopart_det).filter_by(psampleid=S.psampleid):
                     NbrImage =int(round (H.watervolume/S.acq_volimage))
                     for noimg in range(NbrImage):
                         LineDate=H.datetime+timedelta(seconds=noimg)
@@ -139,11 +139,11 @@ Lower_limit_size_class_18	2050
                             wtaxo2File.writerow(data)
 
 
+# noinspection DuplicatedCode
 def GenerateUVPRemoteLambdaFTPProject(SrcProjectTitle,TargetProjectTitle, DirName):
     with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL
         g.db = None
-        part_project=part_projects.query.filter_by(ptitle=SrcProjectTitle).first()
-        originalpprojid=part_project.pprojid
+        part_project=db.session.query(part_projects).filter_by(ptitle=SrcProjectTitle).first()
         db.session.expunge(part_project)  # expunge the object from session
         make_transient(part_project)
         part_project.pprojid=None

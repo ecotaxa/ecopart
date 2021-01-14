@@ -1,8 +1,7 @@
-from flask import render_template, g, flash,json
-from appli import app,PrintInCharte,database,gvg,gvp,user_datastore,DecodeEqualList,ScaleForDisplay,ntcv,ErrorFormat
-from appli.database import GetAll,GetClassifQualClass,ExecSQL,db,GetAssoc
+from appli import app,PrintInCharte,database,gvg,gvp,ErrorFormat
+from appli.database import GetAll,db
 from flask_login import current_user
-from flask import render_template,  flash,request,g
+from flask import render_template,request,g
 import appli,logging,appli.part.uvp_sample_import as uvp_sample_import
 import appli.part.common_sample_import as common_import
 import appli.part.lisst_sample_import as lisst_sample_import
@@ -36,7 +35,9 @@ def part_prj():
     CanCreate=False
     if current_user.has_role(database.AdministratorLabel) or current_user.has_role(database.ProjectCreatorLabel):
         CanCreate=True
+    # noinspection HtmlUnknownTarget
     g.headcenter = "<h4>Particle Projects management</h4><a href='/part/'>Particle Module Home</a>"
+    # noinspection PyUnresolvedReferences
     return PrintInCharte(
         render_template('part/list.html', PrjList=res, CanCreate=CanCreate, AppManagerMailto=appli.GetAppManagerMailto()
                         , filt_title=gvg('filt_title'), filt_subset=gvg('filt_subset'), filt_instrum=gvg('filt_instrum')))
@@ -100,7 +101,7 @@ def part_prj_main(PrjId):
           from part_samples s
           where pprojid=%s
           ORDER BY filename desc
-          """ % (PrjId))
+          """ % (PrjId,))
     MinSampleDate=Prj['oldestsampledate']
     VisibilityText=""
     if MinSampleDate is not None :
@@ -111,6 +112,7 @@ def part_prj_main(PrjId):
                      , "Not Defined" if Prj['partexport_date'] is None else Prj['partexport_date'].strftime("%Y-%m-%d")
                      , "Not Defined" if Prj['zooexport_date'] is None else Prj['zooexport_date'].strftime("%Y-%m-%d") )
 
+    # noinspection PyUnresolvedReferences
     return PrintInCharte(
         render_template('part/prj_index.html', PrjId=PrjId, dbsample=dbsample, Prj=Prj,VisibilityText=VisibilityText))
 
@@ -132,7 +134,7 @@ def ComputeHistoDet(psampleid,instrumtype):
     return " <span style='color: red;'>"+Msg+"</span>"
 
 
-def ComputeHistoRed(psampleid,instrumtype):
+def ComputeHistoRed(psampleid):
         return uvp_sample_import.GenerateReducedParticleHistogram(psampleid)
 
 
@@ -143,7 +145,7 @@ def ComputeZooMatch(psampleid, projid):
                                         where samples.projid=%s and samples.orig_id=ps.profileid""",
                                     ( psampleid,int(projid)))
         if len(ecosample) == 1:
-            database.ExecSQL("update part_samples set sampleid=%s where psampleid=%s",
+            database.ExecSQL("update part_samples set sampleid=(%s) where psampleid=(%s)",
                              (ecosample[0]['sampleid'], psampleid))
             return " Matched"
         else:
@@ -160,7 +162,7 @@ def ComputeZooHisto(psampleid,instrumtype):
         return " Taxonomy Histogram computed"
     except Exception as E:
         logging.exception("Taxonomy Histogram can't be computed ")
-        return " <span style='color: red;'>Taxonomy Histogram can't be computed : %s </span>" % (E)
+        return " <span style='color: red;'>Taxonomy Histogram can't be computed : %s </span>" % (E,)
 
 def GlobalTaxoCompute():
     # Sample Particule sans liens etabli avec Zoo qui sont liables
@@ -186,7 +188,7 @@ def GlobalTaxoCompute():
 @app.route('/part/prjcalc/<int:PrjId>',methods=['post'])
 @login_required
 def part_prjcalc(PrjId):
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=PrjId).first()
+    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=PrjId).first()
     if Prj.ownerid!=current_user.id and not current_user.has_role(database.AdministratorLabel):
         return PrintInCharte(ErrorFormat("Access Denied"))
     txt=""
@@ -211,7 +213,7 @@ def part_prjcalc(PrjId):
         if gvp('dohistodet')=='Y':
             txt += prefix + ComputeHistoDet(S['psampleid'], Prj.instrumtype)
         if gvp('dohistored')=='Y':
-            txt += prefix + ComputeHistoRed(S['psampleid'], Prj.instrumtype)
+            txt += prefix + ComputeHistoRed(S['psampleid'])
         if gvp('domatchecotaxa') == 'Y':
             txt += prefix +ComputeZooMatch(S['psampleid'],Prj.projid)
         if gvp('dohistotaxo') == 'Y':

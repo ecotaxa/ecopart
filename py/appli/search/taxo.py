@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 import re
 from typing import List, Dict
-
 from flask import render_template, json, jsonify
 from flask_login import current_user
 from psycopg2.extensions import QuotedString
-
 from appli import app, gvg, gvp, database, ntcv
-from appli.database import GetAll, GetAssoc2Col
+from appli.database import GetAll, GetAssoc2Col,db
 
 sql_tree_exp = """concat(tf.name,'<'||t1.name,'<'||t2.name,'<'||t3.name,'<'||t4.name,'<'||t5.name,'<'||t6.name,
             '<'||t7.name,'<'||t8.name,'<'||t9.name,'<'||t10.name,'<'||t11.name,'<'||t12.name,
@@ -88,21 +86,21 @@ def searchtaxo():
     prj_id = gvg("projid")
     if prj_id != "":
         prj_id = int(prj_id)
-        prj = database.Projects.query.filter_by(projid=prj_id).first()
+        prj = db.session.query(database.Projects).filter_by(projid=prj_id).first()
         if ntcv(prj.initclassiflist) != "":
             # e.g. 14532,16789,165778
             db_init_classif = prj.initclassiflist
             # => (14532),(16789),(165778)
             init_classif = ", ".join(["(" + x.strip() + ")" for x in db_init_classif.split(",") if x.strip() != ""])
             # We're inside a project, with presets, so favor the presets in the search output order
-            sql = """
+            sql = f"""
             SELECT tf.id, tf.display_name as name, case when id2 is null then 0 else 1 end inpreset 
               FROM taxonomy tf
               JOIN (SELECT t.id id1, c.id id2 
                       FROM taxonomy t
-                      FULL JOIN (VALUES """ + init_classif + """) c(id) ON t.id = c.id
+                      FULL JOIN (VALUES {init_classif}) c(id) ON t.id = c.id
                      WHERE LOWER(display_name) LIKE %(term)s ) tl2 ON tf.id = COALESCE(id1, id2)
-            """ + extra_from + """
+            {extra_from}
              WHERE LOWER(tf.display_name) LIKE %(term)s """ + extra_where + """
           ORDER BY inpreset DESC, LOWER(tf.display_name), name LIMIT 200 """
 
@@ -114,6 +112,7 @@ def searchtaxo():
 def searchtaxotree():
     res = GetAll("SELECT id, name FROM taxonomy WHERE  parent_id is null order by name ")
     # print(res)
+    # noinspection PyUnresolvedReferences
     return render_template('search/taxopopup.html', root_elements=res, targetid=gvg("target", "taxolb"))
 
 
@@ -123,7 +122,8 @@ def taxotreerootjson():
     sql = """SELECT id, name,parent_id,coalesce(nbrobj,0)+coalesce(nbrobjcum,0)
           ,exists(select 1 from taxonomy te where te.parent_id=taxonomy.id)
           FROM taxonomy
-          WHERE """
+          """
+    sql += " WHERE "
     if parent == '#':
         sql += "parent_id is null"
     else:

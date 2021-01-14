@@ -1,8 +1,7 @@
-from flask import render_template, g, flash,json,request
-from appli import app,PrintInCharte,database,gvg,gvp,user_datastore,DecodeEqualList,ScaleForDisplay,ntcv
-from wtforms  import Form, BooleanField, StringField, validators,DateTimeField,IntegerField,FloatField,SelectField,TextAreaField,SelectMultipleField
+from flask import render_template, g, json,request
+from appli import app,PrintInCharte,database
+from wtforms  import Form, SelectField,SelectMultipleField
 from flask_login import current_user
-# from appli.part import part_main, drawchart,PartRedClassLimit
 from appli.part import PartDetClassLimit,PartRedClassLimit,GetClassLimitTxt,CTDFixedCol
 import operator
 
@@ -26,7 +25,7 @@ def indexPart():
     filt_data =request.args
     form=FiltForm(filt_data)
     form.taxolb.choices=[['', '']]
-    if(len(request.args.getlist('taxolb'))):
+    if len(request.args.getlist('taxolb')):
         form.taxolb.choices+=database.GetAll(
              "SELECT id,display_name FROM taxonomy where id in (%s) ORDER BY id,lower(display_name) "%(
                  ",".join((str(int(x)) for x in request.args.getlist('taxolb')))))
@@ -34,6 +33,7 @@ def indexPart():
       <span onclick="$('#particleinfodiv').toggle()"><b>PARTICLE</b> module <span class='glyphicon glyphicon-info-sign'></span> </span> 
       <a href='/' style='font-size:medium;margin-left: 50px;'>Go to Ecotaxa</a></h2>"""
     g.useselect4 = True
+    # noinspection PyUnresolvedReferences
     return PrintInCharte(
         render_template('part/index.html', form=form,LocalGIS=app.config.get("LOCALGIS",False),reqfields=request.args))
 
@@ -44,7 +44,7 @@ def GetSQLVisibility():
     else:
         sqlvisible = "case "
         if current_user.is_authenticated:
-            sqlvisible += " when pp.ownerid=%d then 'YY' "%(current_user.id)
+            sqlvisible += f" when pp.ownerid={current_user.id} then 'YY' "
             sqlvisible += " when ppriv.privilege in('Manage','Annotate') then 'YY' "
             sqljoin ="  left Join projectspriv ppriv on pp.projid = ppriv.projid and ppriv.member=%d"%(current_user.id,)
         sqlvisible += """ when oldestsampledate+make_interval(0,public_visibility_deferral_month)<=current_date 
@@ -62,7 +62,7 @@ def GetSQLVisibility():
         sqlvisible += """ when oldestsampledate+make_interval(0,public_visibility_deferral_month)<=current_date
                        then case when p.visible then 'VV' else 'VN' end  """
         sqlvisible += " else 'NN' end "
-    return (sqlvisible,sqljoin)
+    return sqlvisible, sqljoin
 # Retourne la liste des samples correspondant à un des filtres.
 # La colonne calculé visibility est la synthèse des règle du projet associé
 # 2 Lettre Visibilité Part et Zoo pouvant être N=>No , V=>Visibilité simple, Y=> Export
@@ -107,12 +107,13 @@ def GetFilteredSamples(Filter=None,GetVisibleOnly=False,ForceVerticalIfNotSpecif
     if Filter.get("filt_proftype", '') != "":
         sql += " and organizedbydeepth = %s "%(True if Filter.get("filt_proftype", '' if ForceVerticalIfNotSpecified==False else 'V')=='V' else False)
 
-
+    # noinspection SqlResolve
     sql = """select s.*,case when substr(visibility,1,1)>='%s' and substr(visibility,2,1)>='%s' then true end as visible 
             from (%s ) s """%(RequiredPartVisibility,RequiredZooVisibility,sql)
     if GetVisibleOnly:
+        # noinspection SqlResolve
         sql="select * from ("+sql+") s where visible=true "
-    sql+=""" order by s.psampleid     """
+    sql+=" order by s.psampleid  "
     return database.GetAll(sql,sqlparam)
 
 @app.route('/part/searchsample')
@@ -163,6 +164,7 @@ def PartstatsampleGetData():
         where ps.psampleid in ({0} )
         group by pp.instrumtype
         order by pp.instrumtype""".format(sampleinclause))
+    # noinspection SqlShadowingAlias
     data['taxoprojcount']=database.GetAll("""SELECT coalesce(p.title,'not associated') title,p.projid,count(*) nbr
         from part_samples ps
         join part_projects pp on ps.pprojid=pp.pprojid
@@ -251,12 +253,14 @@ def Partstatsample():
     data=PartstatsampleGetData()
     if isinstance(data,str):
         return data
+    # noinspection PyUnresolvedReferences
     return render_template('part/stats.html', data=data,raw=json.dumps(data))
     # return json.dumps(data)
 
 
 @app.route('/part/getsamplepopover/<int:psampleid>')
 def Partgetsamplepopover(psampleid):
+    # noinspection SqlShadowingAlias
     sql="""select s.psampleid,s.profileid,p.ptitle,ep.title,p.cruise,p.ship ,p.projid,p.pprojid
       ,round(cast(s.latitude as NUMERIC),4) latitude,round(cast(s.longitude as NUMERIC),4) longitude
       ,to_char(s.sampledate,'YYYY-MM-DD HH24:MI') sampledate

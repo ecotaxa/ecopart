@@ -2,10 +2,9 @@
 import os
 import time
 from pathlib import Path
-
 from flask import render_template, request, json
-
 from appli import app, gvg, database, DecodeEqualList
+from appli.database import db
 
 
 @app.route("/search/samples")
@@ -23,6 +22,7 @@ def searchsamples():
                       WHERE  projid in ({0}) and orig_id like %s order by orig_id limit 2000""".format(projid), (term,))
     if gvg("format", 'J') == 'J':  # version JSon par defaut
         return json.dumps([dict(id=r[0], text=r[1]) for r in res])
+    # noinspection PyUnresolvedReferences
     return render_template('search/samples.html', samples=res)
 
 
@@ -40,6 +40,7 @@ def ServerFolderSelect():
     res = []
     # the HTML id of the element which will be updated once selection is done
     target_id = gvg("target", "ServerPath")
+    # noinspection PyUnresolvedReferences
     return render_template('common/fileserverpopup.html', root_elements=res,
                            targetid=target_id, ziponly=gvg('ZipOnly', 'N'))
 
@@ -70,7 +71,7 @@ def ServerFolderSelectJSON():
                                 text="<span class=v>" + "%s (%.1f Mb : %s)" % fmt + "</span> <span class='TaxoSel label label-default'>Select</span>",
                                 parent=parent, children=False))
         except:
-            None  # le parcours des fichier peu planter sur system volume information par exemple.
+            pass  # le parcours des fichier peu planter sur system volume information par exemple.
     res.sort(key=lambda val: str.upper(val['id']), reverse=False)
     return json.dumps(res)
 
@@ -100,7 +101,7 @@ def searchinstrumlist():
 
 @app.route("/search/gettaxomapping")
 def searchgettaxomapping():
-    Prj = database.Projects.query.filter_by(projid=int(gvg("projid"))).first()
+    Prj = db.session.query(database.Projects).filter_by(projid=int(gvg("projid"))).first()
     classifsettings = DecodeEqualList(Prj.classifsettings)
     PostTaxoMapping = classifsettings.get("posttaxomapping", "")
     res = {'mapping': {}, 'taxo': {}}
@@ -125,4 +126,5 @@ def searchannot(PrjId):
           where id in ( SELECT distinct classif_who FROM obj_head WHERE  projid ={0} ) order by name""".format(projid))
     # if gvg("format",'J')=='J': # version JSon par defaut
     #     return json.dumps([dict(id=r[0],text=r[1]) for r in res])
+    # noinspection PyUnresolvedReferences
     return render_template('search/annot.html', samples=res)

@@ -1,13 +1,11 @@
-from os.path import dirname, realpath,join
+from os.path import dirname, realpath
 from pathlib import Path
-from appli import database,app,g,db,gvp,gvg,request
+from appli import database,g,db
 from appli.part import database as dbpart,uvp6remote_sample_import
 from appli.tasks import taskmanager
-#from pytest_mock import mocker
 import pytest,logging,os,re
-import unittest.mock
 from appli import appli
-from flask_login import current_user,login_user
+from flask_login import login_user
 from sqlalchemy import Table, text
 import subprocess
 import runtask
@@ -30,7 +28,7 @@ def app():
 
 # Loggue un user, mais doit être fait après la création du contexte de test
 def LogUser(email):
-    login_user(database.users.query.filter_by(email=email).first())
+    login_user(db.session.query(database.users).filter_by(email=email).first())
 
 def GetLastTaskID():
     return database.GetAll("select max(id) maxid from temp_tasks")[0]['maxid']
@@ -65,6 +63,7 @@ class TaskInstance:
         self.ctx.__exit__(exc_type, exc_val, exc_tb)
 
 
+# noinspection DuplicatedCode
 def dump_table(out, a_table: db.Model, where,skipcol=()):
     base_table: Table = a_table.__table__
     cols = [a_col.name for a_col in base_table.columns]
@@ -117,15 +116,19 @@ def evaluate_sampleTypeAkeyValues(psampleid,CompareBiovolumePart=True,CompareZoo
             assert res[85057]['stotalbiovolume'] == pytest.approx(959.6036)
             assert res[85076]['stotalbiovolume'] == pytest.approx(941.7783)
 
+
+# noinspection SqlResolve
 def clean_existing_projectdata(pprojid:int):
     for tbl in ('part_histopart_reduit','part_histopart_det','part_histocat','part_histocat_lst','part_histocat'):
         database.ExecSQL(f"delete from {tbl} where psampleid in (select part_samples.psampleid from part_samples where pprojid={pprojid})")
     database.ExecSQL(f"delete from part_samples where pprojid={pprojid}")
 
+
+# noinspection DuplicatedCode
 def test_import_uvp6_uvpapp(app,caplog,tmpdir):
     caplog.set_level(logging.DEBUG)  # pour mise au point
     caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
-    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 6 from UVP APP").first()
+    part_project = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 6 from UVP APP").first()
     if part_project is None:
         pytest.fail("UVPAPP Project Missing")
     pprojid=part_project.pprojid
@@ -135,16 +138,16 @@ def test_import_uvp6_uvpapp(app,caplog,tmpdir):
         T.RunTask()
         ExcludedCols=[f'biovol{i:02d}' for i in range (1,46)] # Les biovolumes ne sont pas calculés dans le modèle.
         ExcludedCols.append('psampleid')
-        part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        part_project_ref = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
-        Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
-        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
-        SampleT1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT1").first()
-        Sample2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sample02").first()
-        SampleT2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sampleT2").first()
-        Sample3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample03").first()
-        SampleT3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT3").first()
+        Sample1_ref=db.session.query(dbpart.part_samples).filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
+        Sample1=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample01").first()
+        SampleT1=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sampleT1").first()
+        Sample2 = db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid, profileid="sample02").first()
+        SampleT2 = db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid, profileid="sampleT2").first()
+        Sample3=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample03").first()
+        SampleT3=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sampleT3").first()
 
         reffile=tmpdir.join("reffile.txt")
         datafile=tmpdir.join("datafile.txt")
@@ -165,24 +168,26 @@ def test_import_uvp6_uvpapp(app,caplog,tmpdir):
             evaluate_sampleTypeAkeyValues(sampleid,CompareZoo=False,NbrImage=3,Coeff=0.8)
 
 
+# noinspection DuplicatedCode
 def test_import_uvp5_BRU(app,caplog,tmpdir):
     caplog.set_level(logging.DEBUG)  # pour mise au point
     caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
-    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 5 pour load BRU").first()
+    part_project = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 5 pour load BRU").first()
     if part_project is None:
         pytest.fail("BRU Project Missing")
     pprojid=part_project.pprojid
+    clean_existing_projectdata(pprojid)
     with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","starttask": "Y"}) as T:
         print(f"TaskID={T.TaskID}")
         T.RunTask()
         ExcludedCols=[f'biovol{i:02d}' for i in range (1,46)] # Les biovolumes ne sont pas calculés dans le modèle.
         ExcludedCols.append('psampleid')
         ExcludedCols.append('datetime') # les projets UVP5 ne gèrent pas cette colonne historiquement.
-        part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        part_project_ref = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
-        Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
-        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
+        Sample1_ref=db.session.query(dbpart.part_samples).filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
+        Sample1=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample01").first()
 
         reffile=tmpdir.join("reffile.txt")
         datafile=tmpdir.join("datafile.txt")
@@ -199,24 +204,26 @@ def test_import_uvp5_BRU(app,caplog,tmpdir):
         assert cmpresult
         evaluate_sampleTypeAkeyValues(Sample1.psampleid)
 
+# noinspection DuplicatedCode
 def test_import_uvp5_BRU1(app,caplog,tmpdir):
     caplog.set_level(logging.DEBUG)  # pour mise au point
     caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
-    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 5 pour load BRU1").first()
+    part_project = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 5 pour load BRU1").first()
     if part_project is None:
         pytest.fail("BRU1 Project Missing")
     pprojid=part_project.pprojid
+    clean_existing_projectdata(pprojid)
     with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","starttask": "Y"}) as T:
         print(f"TaskID={T.TaskID}")
         T.RunTask()
         ExcludedCols=[f'biovol{i:02d}' for i in range (1,46)] # Les biovolumes ne sont pas calculés dans le modèle.
         ExcludedCols.append('psampleid')
         ExcludedCols.append('datetime') # les projets UVP5 ne gèrent pas cette colonne historiquement.
-        part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        part_project_ref = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
-        Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
-        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
+        Sample1_ref=db.session.query(dbpart.part_samples).filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
+        Sample1=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample01").first()
 
         reffile=tmpdir.join("reffile.txt")
         datafile=tmpdir.join("datafile.txt")
@@ -236,14 +243,15 @@ def test_import_uvp5_BRU1(app,caplog,tmpdir):
 def test_import_lisst(app,caplog,tmpdir):
     caplog.set_level(logging.DEBUG)  # pour mise au point
     caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
-    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project LISST").first()
+    part_project = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project LISST").first()
     if part_project is None:
         pytest.fail("LISST Project Missing")
     pprojid=part_project.pprojid
+    clean_existing_projectdata(pprojid)
     with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","starttask": "Y"}) as T: # on importe pas les temporels car ils ne sont pas correctement traités
         print(f"TaskID={T.TaskID}")
         T.RunTask()
-        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
+        Sample1=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample01").first()
         # On controle le total biovolume avec quelques PB
         #  sur le lisst on a pas les watervolume associés on fait donc la some des concentrations (qui dans l'abosolu n'as pas de sens
         #  puisqu'il y a le même nombre de ligne dans l'histograme
@@ -263,23 +271,24 @@ def test_import_lisst(app,caplog,tmpdir):
 
 @pytest.fixture
 def httpserver_listen_address():
-    return ("127.0.0.1", 5050)
+    return "127.0.0.1", 5050
 
-def HttpServeurStaticHandler(request)->Response:
-    if request.path.endswith('/'):
-        dir=DATA_DIR/request.path[1:-1]
+def HttpServeurStaticHandler(req)->Response:
+    if req.path.endswith('/'):
+        directory=DATA_DIR/req.path[1:-1]
         result=""
-        for fichier in dir.glob("*"):
+        for fichier in directory.glob("*"):
             result += f"<a href='{fichier.name}'>{fichier.name}</a><br>"
             # print(fichier.name)
         return Response(result)
-    Fichier=DATA_DIR/request.path[1:]
+    Fichier=DATA_DIR/req.path[1:]
     return Response(Fichier.read_text())
 
+# noinspection DuplicatedCode
 def test_import_uvp_remote_lambda_http(app,caplog,tmpdir,httpserver: HTTPServer):
     caplog.set_level(logging.DEBUG)  # pour mise au point
     caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
-    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP Remote Lambda HTTP").first()
+    part_project = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP Remote Lambda HTTP").first()
     if part_project is None:
         pytest.fail("UVPAPP Project Missing")
     pprojid=part_project.pprojid
@@ -306,16 +315,16 @@ def test_import_uvp_remote_lambda_http(app,caplog,tmpdir,httpserver: HTTPServer)
         ExcludedCols.append('psampleid')
         ExcludedCols.extend([f'class{i:02d}' for i in range (1,17)])
         ExcludedCols.extend([f'class{i:02d}' for i in range(35, 46)])
-        part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        part_project_ref = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
-        Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
-        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
-        SampleT1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT1").first()
-        Sample2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sample02").first()
-        SampleT2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sampleT2").first()
-        Sample3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample03").first()
-        SampleT3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT3").first()
+        Sample1_ref=db.session.query(dbpart.part_samples).filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
+        Sample1=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample01").first()
+        SampleT1=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sampleT1").first()
+        Sample2 = db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid, profileid="sample02").first()
+        SampleT2 = db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid, profileid="sampleT2").first()
+        Sample3=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample03").first()
+        SampleT3=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sampleT3").first()
 
         reffile=tmpdir.join("reffile.txt")
         datafile=tmpdir.join("datafile.txt")
@@ -339,12 +348,12 @@ os.environ["FTP_USER"] = "MyUser"
 os.environ["FTP_PASS"] = "MyPassword"
 os.environ["FTP_PORT"] = "21"
 os.environ["FTP_HOME"] = DATA_DIR.as_posix()
+# noinspection DuplicatedCode
 def test_import_uvp_remote_lambda_ftp(app,caplog,tmpdir,ftpserver:PytestLocalFTPServer):
     assert isinstance(ftpserver, PytestLocalFTPServer)
     assert ftpserver.uses_TLS is False
-    login_dict = ftpserver.get_login_data()
     # print(ftpserver.anon_root)
-    # print(login_dict)
+    # print(ftpserver.get_login_data())
     # test du bon fonctionnement du serveur FTP
     ftp = FTP()
     ftp.connect("127.0.0.1")
@@ -360,7 +369,7 @@ def test_import_uvp_remote_lambda_ftp(app,caplog,tmpdir,ftpserver:PytestLocalFTP
     # est différente
     caplog.set_level(logging.DEBUG)  # pour mise au point
     caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
-    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP Remote Lambda FTP").first()
+    part_project = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP Remote Lambda FTP").first()
     if part_project is None:
         pytest.fail("UVPAPP Project Missing")
     pprojid=part_project.pprojid
@@ -379,16 +388,16 @@ def test_import_uvp_remote_lambda_ftp(app,caplog,tmpdir,ftpserver:PytestLocalFTP
         ExcludedCols.append('psampleid')
         ExcludedCols.extend([f'class{i:02d}' for i in range (1,17)])
         ExcludedCols.extend([f'class{i:02d}' for i in range(35, 46)])
-        part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        part_project_ref = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
-        Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
-        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
-        SampleT1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT1").first()
-        Sample2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sample02").first()
-        SampleT2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sampleT2").first()
-        Sample3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample03").first()
-        SampleT3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT3").first()
+        Sample1_ref=db.session.query(dbpart.part_samples).filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
+        Sample1=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample01").first()
+        SampleT1=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sampleT1").first()
+        Sample2 = db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid, profileid="sample02").first()
+        SampleT2 = db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid, profileid="sampleT2").first()
+        Sample3=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample03").first()
+        SampleT3=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sampleT3").first()
 
         reffile=tmpdir.join("reffile.txt")
         datafile=tmpdir.join("datafile.txt")

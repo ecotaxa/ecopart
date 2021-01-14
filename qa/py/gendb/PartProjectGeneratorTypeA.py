@@ -1,4 +1,3 @@
-from gendb.ZooProjectGenerator import ZooProjectGenerator
 from appli import db
 from appli.part import database
 import typing, appli, math, logging
@@ -15,7 +14,7 @@ class PartProjectGeneratorTypeA:
         self.Prj = database.part_projects()
         self.Prj.ptitle = Title
         self.Prj.ownerid = OwnerID
-        self.Zooprojid = appli.database.Projects.query.filter_by(title="EcoPart TU Zoo Project 1").first().projid
+        self.Zooprojid = db.session.query(appli.database.Projects).filter_by(title="EcoPart TU Zoo Project 1").first().projid
         self.Prj.projid = self.Zooprojid
         self.Prj.instrumtype = 'uvp5'
         self.Prj.op_name = 'My OP Name'
@@ -37,7 +36,8 @@ class PartProjectGeneratorTypeA:
         self.GenerateParticules(Sample, Coeff=0.8,NbrImages=3)
         logging.info(f"Filled 3 Samples")
 
-    def GenerateParticules(self, Sample, Coeff=1,NbrImages=1):
+    # noinspection PyMethodMayBeStatic
+    def GenerateParticules(self, Sample, Coeff:float=1,NbrImages:float=1): #   utilisé par héritier
         def Clean(x):
             if x <= 0:  # supprimer les negatif
                 return 0

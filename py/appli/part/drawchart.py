@@ -34,6 +34,7 @@ class dateFormaterYMD(matplotlib.ticker.Formatter):
             return "-"
         return matplotlib.dates.num2date(x).strftime("%Y-%m-%d")
 
+# noinspection DuplicatedCode
 @app.route('/part/drawchart')
 def part_drawchart():
     Couleurs=("#FF0000","#4385FF","#00BE00","#AA6E28","#FF9900","#FFD8B1","#808000","#FFEA00","#FFFAC8","#BEFF00",
@@ -249,6 +250,7 @@ def part_drawchart():
                 if TimeAbsolute:
                     sql = "select datetime y "
                 else:
+                    # noinspection SqlResolve
                     sql = "select -round(cast(EXTRACT(EPOCH FROM datetime-(select min(datetime) from part_ctd where psampleid=%(psampleid)s))/3600 as numeric),2) y "
             sql+=''.join([',%s as c%d'%(c,i) for i,c in enumerate(gctd)])
             sql += """ from part_ctd
@@ -353,7 +355,6 @@ def part_drawchart():
                     else: # si pas le droit, on fait comme s'il n'y avait pas de données.
                         DBData=[]
                         WV = {}
-                    hist=[]
                     if len(DBData)>0:
                         data = np.empty((len(DBData), 2))
                         TimeValues={}
@@ -378,6 +379,7 @@ def part_drawchart():
                             (SampleColorMap[rs['psampleid']] if len(SampleColorMap) < 25 else None)
                         if  ProfilVertical:
                             Y = -edge[:-1]
+                            # noinspection PyCallingNonCallable
                             graph[i].step(hist,Y,color=color)
                         else:
                             if TimeAbsolute :
@@ -390,6 +392,7 @@ def part_drawchart():
 
                             else:
                                 X = edge[:-1]
+                            # noinspection PyCallingNonCallable
                             graph[i].step( X,hist, color=color)
                     bottom, top = graph[i].get_ylim()
                     if ProfilVertical:

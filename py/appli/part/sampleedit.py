@@ -1,13 +1,11 @@
-from flask import render_template, g, flash,json,redirect
+from flask import render_template, redirect
 from appli.part.common_sample_import import GetPathForRawHistoFile
-from appli import app,PrintInCharte,database,gvg,gvp,user_datastore,DecodeEqualList,ScaleForDisplay,ntcv
-from appli.database import GetAll,GetClassifQualClass,ExecSQL,db,GetAssoc
-from flask_login import current_user
-from flask import render_template,  flash,request,g
-import appli,logging,appli.part.uvp_sample_import as sample_import
+from appli import app,PrintInCharte,database,gvp
+from appli.database import db
+from flask import render_template,  flash,request
+import appli
 import appli.part.database as partdatabase
 import appli.part.prj
-# from . import prj as PartPrj
 from flask_security import login_required
 from wtforms  import Form, BooleanField, StringField, validators,DateTimeField,IntegerField,FloatField,TextAreaField
 from pathlib import Path
@@ -81,7 +79,7 @@ def delete_sample(psampleid):
     RawHistoFile=Path(GetPathForRawHistoFile(psampleid))
     if RawHistoFile.exists():
         RawHistoFile.unlink()
-    model = partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    model = db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     for t in ('part_histopart_reduit', 'part_histopart_det', 'part_histocat', 'part_histocat_lst', 'part_ctd'):
         database.ExecSQL("delete from " + t + " where psampleid=" + str(model.psampleid))
     db.session.delete(model)
@@ -91,7 +89,7 @@ def delete_sample(psampleid):
 @app.route('/part/sampleedit/<int:psampleid>',methods=['get','post'])
 @login_required
 def part_sampleedit(psampleid):
-    model = partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    model = db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
     form=UvpSampleForm(request.form,model)
     if gvp('delete')=='Y':
         delete_sample(psampleid)
@@ -102,9 +100,10 @@ def part_sampleedit(psampleid):
         db.session.commit()
         if gvp('forcerecalc')=='Y':
             appli.part.prj.ComputeHistoDet(model.psampleid,model.project.instrumtype)
-            appli.part.prj.ComputeHistoRed(model.psampleid,model.project.instrumtype)
+            appli.part.prj.ComputeHistoRed(model.psampleid)
             appli.part.prj.ComputeZooMatch(model.psampleid,model.project.projid)
             flash("Histograms have been recomputed","success")
         return redirect("/part/prj/"+str(model.pprojid))
+    # noinspection PyUnresolvedReferences
     return PrintInCharte(render_template("part/sampleedit.html", form=form, prjid=model.pprojid
                                          , psampleid=model.psampleid, acq_descent_filter=model.acq_descent_filter))

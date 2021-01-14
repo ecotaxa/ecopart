@@ -91,7 +91,7 @@ class TaskPartZooscanImport(AsyncTask):
 
                     result=appli.part.prj.ComputeHistoDet(psampleid, Prj.instrumtype)
                     logging.info(result)
-                    result=appli.part.prj.ComputeHistoRed(psampleid, Prj.instrumtype)
+                    result=appli.part.prj.ComputeHistoRed(psampleid)
                     logging.info(result)
                     if Prj.projid is not None : # on essaye de matcher que si on a un projet Ecotaxa
                         appli.part.prj.ComputeZooMatch(psampleid, Prj.projid)
@@ -136,7 +136,13 @@ class TaskPartZooscanImport(AsyncTask):
 
         if Prj.instrumtype=='uvp6remote':
             RSF = uvp6remote_sample_import.RemoteServerFetcher(int(self.param.pprojid))
-            Samples=RSF.GetServerFiles()
+            try:
+                Samples=RSF.GetServerFiles()
+            except Exception as E:
+                return PrintInCharte(
+                    ErrorFormat(f"Error while retrieving remote file list {E} on {Prj.remote_url}")
+                    +f"<br><br><a href='/part/prj/{Prj.pprojid}'>back on project page</a>"
+                )
             # print(Samples)
             for SampleName,Sample in Samples.items():
                 r={'profileid':SampleName,'filename':Sample['files']['LPM'],'psampleid':None}
