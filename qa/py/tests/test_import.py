@@ -14,6 +14,9 @@ import runtask
 from pytest_httpserver import HTTPServer
 from werkzeug.wrappers import Response
 import requests
+from ftplib import FTP
+from pytest_localftpserver.plugin import PytestLocalFTPServer
+
 
 HERE = Path(dirname(realpath(__file__)))
 DATA_DIR = (HERE / ".." /  ".." / "data").resolve()
@@ -289,6 +292,79 @@ def test_import_uvp_remote_lambda_http(app,caplog,tmpdir,httpserver: HTTPServer)
     assert requests.get("http://localhost:5050/tu1_uvp6remotelambda/sample01_UVPSN_DEPTH_BLACK.txt").text.startswith("DATE_TIME\t")
     # print(httpserver.url_for("/tu1_uvp6remotelambda/"))
 
+    RSF = uvp6remote_sample_import.RemoteServerFetcher(pprojid)
+    Samples = RSF.GetServerFiles()
+    # print(Samples)
+    assert 'sample01' in Samples # test de la récupération de la liste des fichiers
+    assert len(Samples)==6
+    # return
+
+    with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"starttask": "Y"}) as T:
+        print(f"TaskID={T.TaskID}")
+        T.RunTask()
+        ExcludedCols=[f'biovol{i:02d}' for i in range (1,46)] # Les biovolumes ne sont pas calculés dans le modèle.
+        ExcludedCols.append('psampleid')
+        ExcludedCols.extend([f'class{i:02d}' for i in range (1,17)])
+        ExcludedCols.extend([f'class{i:02d}' for i in range(35, 46)])
+        part_project_ref = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP 2 Precomputed").first()
+        if part_project_ref is None:
+            pytest.fail("BRU Ref Project Missing")
+        Sample1_ref=dbpart.part_samples.query.filter_by(pprojid=part_project_ref.pprojid,profileid="sample01").first()
+        Sample1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample01").first()
+        SampleT1=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT1").first()
+        Sample2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sample02").first()
+        SampleT2 = dbpart.part_samples.query.filter_by(pprojid=pprojid, profileid="sampleT2").first()
+        Sample3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sample03").first()
+        SampleT3=dbpart.part_samples.query.filter_by(pprojid=pprojid,profileid="sampleT3").first()
+
+        reffile=tmpdir.join("reffile.txt")
+        datafile=tmpdir.join("datafile.txt")
+        with open(reffile, "w") as fd:
+            dump_table(fd, dbpart.part_histopart_reduit, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
+            dump_table(fd, dbpart.part_histopart_det, f"psampleid={Sample1_ref.psampleid}", skipcol=ExcludedCols)
+        with open(datafile, "w") as fd:
+            dump_table(fd, dbpart.part_histopart_reduit, f"psampleid={Sample1.psampleid}", skipcol=ExcludedCols)
+            dump_table(fd, dbpart.part_histopart_det, f"psampleid={Sample1.psampleid}", skipcol=ExcludedCols)
+        cmpresult=reffile.read() ==  datafile.read() # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
+        if not cmpresult: ShowOnWinmerge(reffile, datafile)
+        assert cmpresult
+        for sampleid in (Sample1.psampleid,SampleT1.psampleid):
+            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareBiovolumeZoo=False)
+        for sampleid in (Sample2.psampleid,SampleT2.psampleid):
+            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareZoo=False,NbrImage=2,Coeff=1.2)
+        for sampleid in (Sample3.psampleid,SampleT3.psampleid):
+            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareZoo=False,NbrImage=3,Coeff=0.8)
+
+os.environ["FTP_USER"] = "MyUser"
+os.environ["FTP_PASS"] = "MyPassword"
+os.environ["FTP_PORT"] = "21"
+os.environ["FTP_HOME"] = DATA_DIR.as_posix()
+def test_import_uvp_remote_lambda_ftp(app,caplog,tmpdir,ftpserver:PytestLocalFTPServer):
+    assert isinstance(ftpserver, PytestLocalFTPServer)
+    assert ftpserver.uses_TLS is False
+    login_dict = ftpserver.get_login_data()
+    # print(ftpserver.anon_root)
+    # print(login_dict)
+    # test du bon fonctionnement du serveur FTP
+    ftp = FTP()
+    ftp.connect("127.0.0.1")
+    ftp.login("MyUser","MyPassword")
+    ftp.cwd('tu1_uvp6remotelambda')
+    lstfichiers=ftp.nlst()
+    # print(lstfichiers)
+    assert "sample01_UVPSN_DEPTH_BLACK.txt" in lstfichiers
+    ftp.close()
+    # return
+
+    # Test de la fonction Remote FTP, l'ensemble des test est commun à la version FTP, seule la récupératind des fichiers
+    # est différente
+    caplog.set_level(logging.DEBUG)  # pour mise au point
+    caplog.set_level(logging.CRITICAL) # pour execution très silencieuse
+    part_project = dbpart.part_projects.query.filter_by(ptitle="EcoPart TU Project UVP Remote Lambda FTP").first()
+    if part_project is None:
+        pytest.fail("UVPAPP Project Missing")
+    pprojid=part_project.pprojid
+    clean_existing_projectdata(pprojid)
     RSF = uvp6remote_sample_import.RemoteServerFetcher(pprojid)
     Samples = RSF.GetServerFiles()
     # print(Samples)

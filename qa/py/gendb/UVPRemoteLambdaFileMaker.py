@@ -139,7 +139,30 @@ Lower_limit_size_class_18	2050
                             wtaxo2File.writerow(data)
 
 
+def GenerateUVPRemoteLambdaFTPProject(SrcProjectTitle,TargetProjectTitle, DirName):
+    with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL
+        g.db = None
+        part_project=part_projects.query.filter_by(ptitle=SrcProjectTitle).first()
+        originalpprojid=part_project.pprojid
+        db.session.expunge(part_project)  # expunge the object from session
+        make_transient(part_project)
+        part_project.pprojid=None
+        part_project.ptitle=TargetProjectTitle
+        part_project.rawfolder="qa/data/"+DirName
+        part_project.instrumtype="uvp6remote"
+        part_project.remote_url="127.0.0.1"
+        part_project.remote_user = "MyUser"
+        part_project.remote_password = "MyPassword"
+        part_project.remote_directory = "tu1_uvp6remotelambda"
+        part_project.remote_type = 'TSV LOV'
+        db.session.add(part_project)
+        db.session.commit()
+
+
 if __name__ == "__main__":
-    GenerateUVPRemoteLambdaFolder( SrcProjectTitle="EcoPart TU Project UVP 6 from UVP APP"
-                                     ,TargetProjectTitle="EcoPart TU Project UVP Remote Lambda TEST"
+    # GenerateUVPRemoteLambdaFolder( SrcProjectTitle="EcoPart TU Project UVP 6 from UVP APP"
+    #                                  ,TargetProjectTitle="EcoPart TU Project UVP Remote Lambda TEST"
+    #                                  ,DirName="tu1_uvp6remotelambda")
+    GenerateUVPRemoteLambdaFTPProject( SrcProjectTitle="EcoPart TU Project UVP Remote Lambda TEST"
+                                     ,TargetProjectTitle="EcoPart TU Project UVP Remote Lambda FTP"
                                      ,DirName="tu1_uvp6remotelambda")
