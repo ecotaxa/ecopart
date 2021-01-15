@@ -86,7 +86,7 @@ def ShowOnWinmerge(File1,File2):
     # print(cmd)
     subprocess.call(cmd)
 
-def evaluate_sampleTypeAkeyValues(psampleid,CompareBiovolumePart=True,CompareZoo=True,NbrImage=1,Coeff=1.0,CompareBiovolumeZoo=True):
+def check_sampleTypeAkeyValues(psampleid, CompareBiovolumePart=True, CompareZoo=True, NbrImage=1, Coeff=1.0, CompareBiovolumeZoo=True):
     """On teste des valeurs clés du sample, les # & BV des 2 premières classe et le watervolume"""
     sql = """select sum(watervolume) swatervolume,sum(class17) sclass17,sum(biovol17*watervolume) sbiovol17 
         ,sum(class18) sclass18 ,sum(biovol18*watervolume) sbiovol18
@@ -116,10 +116,23 @@ def evaluate_sampleTypeAkeyValues(psampleid,CompareBiovolumePart=True,CompareZoo
             assert res[85057]['stotalbiovolume'] == pytest.approx(959.6036)
             assert res[85076]['stotalbiovolume'] == pytest.approx(941.7783)
 
+def check_CtdValues(psampleid:int,ctdtype:int):
+    sql = """select sum(chloro_fluo) schloro_fluo,sum(depth_salt_water) sdepth_salt_water
+    from part_ctd t where psampleid=%s"""
+    res = database.GetRow(sql, [psampleid])
+    if ctdtype==1:
+        assert res['schloro_fluo'] == pytest.approx(59.02659)
+        assert res['sdepth_salt_water'] == pytest.approx(125067.93)
+    elif ctdtype == 2:
+        assert res['schloro_fluo'] == pytest.approx(75.9722)
+        assert res['sdepth_salt_water'] == pytest.approx(509406.79)
+    else:
+        pytest.fail(f"Invalid ctdtype:{ctdtype}")
+
 
 # noinspection SqlResolve
 def clean_existing_projectdata(pprojid:int):
-    for tbl in ('part_histopart_reduit','part_histopart_det','part_histocat','part_histocat_lst','part_histocat'):
+    for tbl in ('part_histopart_reduit','part_histopart_det','part_histocat','part_histocat_lst','part_histocat','part_ctd'):
         database.ExecSQL(f"delete from {tbl} where psampleid in (select part_samples.psampleid from part_samples where pprojid={pprojid})")
     database.ExecSQL(f"delete from part_samples where pprojid={pprojid}")
 
@@ -161,11 +174,13 @@ def test_import_uvp6_uvpapp(app,caplog,tmpdir):
         if not cmpresult: ShowOnWinmerge(reffile, datafile)
         assert cmpresult
         for sampleid in (Sample1.psampleid,SampleT1.psampleid):
-            evaluate_sampleTypeAkeyValues(sampleid)
+            check_sampleTypeAkeyValues(sampleid)
         for sampleid in (Sample2.psampleid,SampleT2.psampleid):
-            evaluate_sampleTypeAkeyValues(sampleid,CompareZoo=False,NbrImage=2,Coeff=1.2)
+            check_sampleTypeAkeyValues(sampleid, CompareZoo=False, NbrImage=2, Coeff=1.2)
         for sampleid in (Sample3.psampleid,SampleT3.psampleid):
-            evaluate_sampleTypeAkeyValues(sampleid,CompareZoo=False,NbrImage=3,Coeff=0.8)
+            check_sampleTypeAkeyValues(sampleid, CompareZoo=False, NbrImage=3, Coeff=0.8)
+        check_CtdValues(Sample2.psampleid,1)
+        check_CtdValues(Sample3.psampleid, 2)
 
 
 # noinspection DuplicatedCode
@@ -202,7 +217,11 @@ def test_import_uvp5_BRU(app,caplog,tmpdir):
         cmpresult=reffile.read() ==  datafile.read() # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
         if not cmpresult: ShowOnWinmerge(reffile, datafile)
         assert cmpresult
-        evaluate_sampleTypeAkeyValues(Sample1.psampleid)
+        check_sampleTypeAkeyValues(Sample1.psampleid)
+        Sample2=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample02").first()
+        Sample3=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample03").first()
+        check_CtdValues(Sample2.psampleid,1)
+        check_CtdValues(Sample3.psampleid, 2)
 
 # noinspection DuplicatedCode
 def test_import_uvp5_BRU1(app,caplog,tmpdir):
@@ -238,7 +257,11 @@ def test_import_uvp5_BRU1(app,caplog,tmpdir):
         cmpresult=reffile.read() ==  datafile.read() # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
         if not cmpresult: ShowOnWinmerge(reffile, datafile)
         assert cmpresult
-        evaluate_sampleTypeAkeyValues(Sample1.psampleid)
+        check_sampleTypeAkeyValues(Sample1.psampleid)
+        Sample2=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample02").first()
+        Sample3=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample03").first()
+        check_CtdValues(Sample2.psampleid,1)
+        check_CtdValues(Sample3.psampleid, 2)
 
 def test_import_lisst(app,caplog,tmpdir):
     caplog.set_level(logging.DEBUG)  # pour mise au point
@@ -267,6 +290,10 @@ def test_import_lisst(app,caplog,tmpdir):
         assert res['biovol18_20raw'] == pytest.approx(2.2831353)
         assert res['biovol22raw'] == pytest.approx(3.1642698)
         assert res['biovol2324raw'] == pytest.approx(39.27267)
+        Sample2=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample02").first()
+        Sample3=db.session.query(dbpart.part_samples).filter_by(pprojid=pprojid,profileid="sample03").first()
+        check_CtdValues(Sample2.psampleid,1)
+        check_CtdValues(Sample3.psampleid, 2)
 
 
 @pytest.fixture
@@ -338,11 +365,11 @@ def test_import_uvp_remote_lambda_http(app,caplog,tmpdir,httpserver: HTTPServer)
         if not cmpresult: ShowOnWinmerge(reffile, datafile)
         assert cmpresult
         for sampleid in (Sample1.psampleid,SampleT1.psampleid):
-            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareBiovolumeZoo=False)
+            check_sampleTypeAkeyValues(sampleid, CompareBiovolumePart=False, CompareBiovolumeZoo=False)
         for sampleid in (Sample2.psampleid,SampleT2.psampleid):
-            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareZoo=False,NbrImage=2,Coeff=1.2)
+            check_sampleTypeAkeyValues(sampleid, CompareBiovolumePart=False, CompareZoo=False, NbrImage=2, Coeff=1.2)
         for sampleid in (Sample3.psampleid,SampleT3.psampleid):
-            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareZoo=False,NbrImage=3,Coeff=0.8)
+            check_sampleTypeAkeyValues(sampleid, CompareBiovolumePart=False, CompareZoo=False, NbrImage=3, Coeff=0.8)
 
 os.environ["FTP_USER"] = "MyUser"
 os.environ["FTP_PASS"] = "MyPassword"
@@ -411,10 +438,10 @@ def test_import_uvp_remote_lambda_ftp(app,caplog,tmpdir,ftpserver:PytestLocalFTP
         if not cmpresult: ShowOnWinmerge(reffile, datafile)
         assert cmpresult
         for sampleid in (Sample1.psampleid,SampleT1.psampleid):
-            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareBiovolumeZoo=False)
+            check_sampleTypeAkeyValues(sampleid, CompareBiovolumePart=False, CompareBiovolumeZoo=False)
         for sampleid in (Sample2.psampleid,SampleT2.psampleid):
-            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareZoo=False,NbrImage=2,Coeff=1.2)
+            check_sampleTypeAkeyValues(sampleid, CompareBiovolumePart=False, CompareZoo=False, NbrImage=2, Coeff=1.2)
         for sampleid in (Sample3.psampleid,SampleT3.psampleid):
-            evaluate_sampleTypeAkeyValues(sampleid,CompareBiovolumePart=False,CompareZoo=False,NbrImage=3,Coeff=0.8)
+            check_sampleTypeAkeyValues(sampleid, CompareBiovolumePart=False, CompareZoo=False, NbrImage=3, Coeff=0.8)
 
 

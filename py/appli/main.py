@@ -92,11 +92,9 @@ def before_request_security():
     # current_user.is_authenticated
     g.cookieGAOK = request.cookies.get('GAOK', '')
     g.menu = []
-    g.menu.append((url_for("index"),"Home / Explore"))
-    g.menu.append(("/prj/","Select Project"))
-    g.menu.append(("/part/","Particle Module"))
+    g.menu.append(("/part/","Home / View data"))
     if current_user.is_authenticated:
-        g.menu.append(("/part/prj/","Particle projects management"))
+        g.menu.append(("/part/prj/","Projects management"))
     g.useradmin=False
     g.appliadmin=False
     if current_user.has_role(database.AdministratorLabel) or current_user.has_role(database.ProjectCreatorLabel) :
@@ -113,8 +111,6 @@ def before_request_security():
         g.useradmin=True
     if current_user.has_role(database.AdministratorLabel) :
         # g.menu.append(("/Task/Create/TaskTaxoImport","Import Taxonomy"))
-        g.menu.append(("/Task/Create/TaskExportDb","Export Database"))
-        g.menu.append(("/Task/Create/TaskImportDB","Import Database"))
         g.menu.append(("/Task/listall","Task Manager"))
         g.appliadmin=True
 

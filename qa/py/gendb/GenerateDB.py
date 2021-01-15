@@ -13,6 +13,7 @@ from gendb.PartProjectGeneratorTypeUVP6 import PartProjectGeneratorTypeUVP6
 from gendb.UVP5FileMaker import GenerateUVP5Folder
 from gendb.UVPAppFileMaker import GenerateUVPAppFolder
 from gendb.LISSTFileMaker import GenerateLISSTFolder
+from gendb.PartProjectGeneratorGeo import PartProjectGeneratorTypeGeo
 
 
 HERE = Path(dirname(realpath(__file__)))
@@ -114,3 +115,6 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
     GenerateUVPRemoteLambdaFTPProject(SrcProjectTitle="EcoPart TU Project UVP Remote Lambda HTTP"
                                       , TargetProjectTitle="EcoPart TU Project UVP Remote Lambda FTP"
                                       , DirName="tu1_uvp6remotelambda")
+
+    PartPrj = PartProjectGeneratorTypeGeo()
+    PartPrj.Generate("Geo Sample on all the map")

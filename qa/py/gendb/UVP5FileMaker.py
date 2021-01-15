@@ -4,7 +4,7 @@ from appli import app,g,db
 from appli.part import PartDetClassLimit
 from appli.tasks.importcommon import calcpixelfromesd_aa_exp
 from appli.part.database import part_samples,part_histopart_det,part_projects
-import re,csv,configparser
+import re,csv,configparser,shutil
 # noinspection PyProtectedMember
 from sqlalchemy.orm.session import make_transient
 
@@ -100,10 +100,16 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="br
                                 else: # bru1
                                     BruFile.write(" %s;\t%s;\t%s;\t%s;500;500\r\n" % (
                                         H.lineno * NbrImage + (i % NbrImage) + 1,  i + 1, Area, MeanGrey))
+                if S.profileid in ('sample02','sample03'):
+                    CTDDirPath = FullDirPath / "ctd_data_cnv"
+                    if not CTDDirPath.exists():
+                        CTDDirPath.mkdir()
+                    CtdFile = CTDDirPath / (S.profileid + ".ctd")
+                    shutil.copy(FullDirPath/".."/ ("ctd1.ctd" if S.profileid=='sample02' else "ctd2.ctd"),CtdFile)
 
 
 if __name__ == "__main__":
     GenerateUVP5Folder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed"
-                                     ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU1"
+                                     ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU1 Test"
                                      ,DirName="tu1_uvp5bru1"
                                      ,BRUFormat="bru1")

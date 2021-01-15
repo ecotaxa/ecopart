@@ -4,7 +4,7 @@ from appli import app,g,db
 from appli.part import PartDetClassLimit
 from appli.part.lisst_sample_import import BuildLISSTClass
 from appli.part.database import part_samples,part_histopart_det,part_projects
-import re,csv
+import re,csv,shutil
 # noinspection PyProtectedMember
 from sqlalchemy.orm.session import make_transient
 
@@ -72,6 +72,13 @@ def GenerateLISSTFolder(SrcProjectTitle,TargetProjectTitle, DirName):
                                         break
                             PartDatas[ClassLisstMap[classe]]+=NbrClasse
                         PartFile.write((" ".join(str(x) for x in PartDatas))+"\n")
+                if S.profileid in ('sample02','sample03'):
+                    CTDDirPath = FullDirPath / "ctd_data_cnv"
+                    if not CTDDirPath.exists():
+                        CTDDirPath.mkdir()
+                    CtdFile = CTDDirPath / (S.profileid + ".ctd")
+                    shutil.copy(FullDirPath/".."/ ("ctd1.ctd" if S.profileid=='sample02' else "ctd2.ctd"),CtdFile)
+
 
 if __name__ == "__main__":
     GenerateLISSTFolder(SrcProjectTitle="EcoPart TU Project UVP 6 from UVP APP" # pas le ref car on a besoin des Bv
