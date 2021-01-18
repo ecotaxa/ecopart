@@ -1,6 +1,7 @@
+<!--suppress CssUnknownTarget, CssUnusedSymbol, HtmlUnknownTarget, JSUnusedLocalSymbols -->
 <style>
     .headinfo {margin-bottom: 5px;}
-    .select2-results__option {padding: 0px;}
+    .select2-results__option {padding: 0;}
 #filter1 td:nth-child(1) {width: 100px; }
 #filter1 td {padding-bottom: 2px;}
 #geofilter .form-control {width:100px;display: inline-block;}
@@ -82,7 +83,7 @@ title="Email a link to this page, including the current filters. Press CTRL to o
   <tr><td>Profile type </td><td>{{ form.filt_proftype(style="width:100px") }}
   <span class='glyphicon glyphicon-info-sign' onclick="$('#dotlegend2').toggle()"></span> <br>
   <div id="dotlegend2" style="display: none">
-  <span style="color: black;">Oblique casts (from gliders) are displayed as depth casts
+    <span style="color: black;">Oblique casts (from gliders) are displayed as depth casts</span>
 
 </div>
 
@@ -144,11 +145,11 @@ Displaying Map requires Internet Access to load map from https://services.arcgis
 		<div class="form-inline">
 			<div class="input-group" style="width: 49%" >
 				<div class="input-group-addon"><span class="glyphicon glyphicon-triangle-bottom"></span></div>
-				<input class="form-control" type="text" id="filt_depthmin" name="filt_depthmin" value="{{ reqfields['filt_depthmin'] }}" autocomplete="off" value="" placeholder="Min [db]">
+				<input class="form-control" type="text" id="filt_depthmin" name="filt_depthmin" value="{{ reqfields['filt_depthmin'] }}" autocomplete="off" placeholder="Min [db]">
 			</div>
 			<div class="input-group" style="width: 49%">
 				<div class="input-group-addon"><span class="glyphicon glyphicon-triangle-top"></span></div>
-				<input class="form-control"  type="text" id="filt_depthmax" name="filt_depthmax" value="{{ reqfields['filt_depthmax'] }}"autocomplete="off" value=""  placeholder="Max [db]">
+				<input class="form-control"  type="text" id="filt_depthmax" name="filt_depthmax" value="{{ reqfields['filt_depthmax'] }}" autocomplete="off"  placeholder="Max [db]">
 			</div>
 		</div>
 	</div>
@@ -213,8 +214,8 @@ Sum abundance of children categories
 
 <script>
   $(function () {
-    var jstreeexp=$('#jstreeexp');
-    var taxolb=$('#taxolb');
+    let jstreeexp = $('#jstreeexp');
+    let taxolb = $('#taxolb');
     jstreeexp.jstree({
       'core': {
         "animation" : 0,
@@ -232,14 +233,14 @@ Sum abundance of children categories
       jstreeexp.delegate(".TaxoSel",'click',
           function(o){
             o.preventDefault();
-            var id= $(o.target).closest("li").attr("id");
-            var valeur= $(o.target).prev().html();
+            let id = $(o.target).closest("li").attr("id");
+            let valeur = $(o.target).prev().html();
             if($(o.target).hasClass("glyphicon"))
                 valeur= $(o.target).parent().prev().html();
            $('#SelectedID').html(id);
            $('#SelectedName').html(valeur);
            taxolb.append($('<option>', {    value: id,    text: valeur}));
-            var sel=taxolb.val();
+            let sel = taxolb.val();
             if(sel===null) sel=[];
             sel.push(id);
             taxolb.val(sel);
@@ -254,7 +255,7 @@ Sum abundance of children categories
 
     taxolb.change(function (){ {# Mise à jour des background dans l'arbre #}
       $(".taxo_tree_selected").removeClass("taxo_tree_selected");
-      var taxofilterarray = [];
+      let taxofilterarray = [];
       taxolb.find(':selected').each(function(i, selected){ taxofilterarray[i] = "#"+$(selected).val();    });
       $(taxofilterarray.join(",")).addClass("taxo_tree_selected");
     });
@@ -282,34 +283,34 @@ $('#gpr,#gpd,#ctd').select2( );
 
 function DoSearch(){
 {#    $('#ajaxlog').append("Start DoSearch");#}
-    var url="/part/searchsample?"+$('#filt_form').serialize();
-{#    $('#ajaxlog').append("<br>URL="+url);#}
+  let url = "/part/searchsample?" + $('#filt_form').serialize();
+  {#    $('#ajaxlog').append("<br>URL="+url);#}
     $.getJSON( url, function( data ) {
 {#        $('#ajaxlog').append( "<br>" +data.length+" samples found");#}
         SampleSource.clear();SampleSourceNotVisible.clear();SampleSourceVisible.clear();SampleSourceExportCTD.clear();
-        var d = new Date();
+        let d = new Date();
         $('#samplecount').html(data.length+" samples - "+d.toUTCString()+"<span style='font-weight:normal'> - Use Shift+drag for Rectangle Zooming, Use Alt+drag for Rectangle Selection</span>");
+        let mapProjectionCode=map.getView().getProjection().getCode();
         $.each( data, function(key, val ) {
-            var iconFeature = new ol.Feature({ geometry: new ol.geom.Point(ol.proj.transform([val['long'],val['lat']], 'EPSG:4326','EPSG:3857'))
-            //var iconFeature = new ol.Feature({ geometry: new ol.geom.Point(ol.proj.transform([val['long'],val['lat']], 'EPSG:4326','EPSG:4326'))
-                      ,psampleid:val['id'] });
-            if(val['visibility'][1]=='Y')
+          let iconFeature = new ol.Feature({
+                    geometry: new ol.geom.Point(ol.proj.transform([val['long'],val['lat']], 'EPSG:4326',mapProjectionCode))
+                   ,psampleid:val['id'] });
+            if(val['visibility'][1]==='Y')
               SampleSource.addFeature(iconFeature);
-            else if(val['visibility'][0]=='Y')
+            else if(val['visibility'][0]==='Y')
               SampleSourceExportCTD.addFeature(iconFeature);
-            else if(val['visibility'][0]=='V')
+            else if(val['visibility'][0]==='V')
               SampleSourceVisible.addFeature(iconFeature);
             else
               SampleSourceNotVisible.addFeature(iconFeature);
-{#            $('#ajaxlog').append( "<br>-" + val['id']+val['lat']  );#}
           });
     });
 }
 function ShowStat() {
-  var url="/part/statsample?"+$('#filt_form').serialize();
+  let url="/part/statsample?"+$('#filt_form').serialize();
   $('#graphdest').html("<div id=waiter><img src='/static/spinningred.gif' >Processing your request, please wait....</div>"
       ).load(url, function( response, status, xhr ) {
-        if ( status == "error" ) { $( "#graphdest" ).html( xhr.status + " " + xhr.statusText );  } });
+        if ( status === "error" ) { $( "#graphdest" ).html( xhr.status + " " + xhr.statusText );  } });
 }
 
 function DisplayAll()
@@ -321,13 +322,12 @@ function DisplayAll()
 }
 
 function DoExport(){
-  var url="/Task/Create/TaskPartExport?"+$('#filt_form').serialize()+"&"+$('#formgraphconfig').serialize();
-  window.location=url;
+  window.location="/Task/Create/TaskPartExport?"+$('#filt_form').serialize()+"&"+$('#formgraphconfig').serialize();
 }
 
 function ProcessDraw(){
-  var url="/part/drawchart?"+$('#filt_form').serialize()+"&"+$('#formgraphconfig').serialize()+"&r="+Math.random();
-  var img = $("<div id=waiter><img src='/static/spinningred.gif' >Processing your request, please wait....</div><img src='"+url+"' style='max-width: 100%;'>");
+  let url = "/part/drawchart?" + $('#filt_form').serialize() + "&" + $('#formgraphconfig').serialize() + "&r=" + Math.random();
+  let img = $("<div id=waiter><img src='/static/spinningred.gif' >Processing your request, please wait....</div><img src='" + url + "' style='max-width: 100%;'>");
   img.load(function() {
     $('#waiter').hide();
   });
@@ -336,7 +336,7 @@ function ProcessDraw(){
 
 
 $('#SharePageBtn').click(function (e) {
-  var url=window.location.protocol + "//" + window.location.host + "/part/?"+$('#filt_form').serialize()+"&"+$('#formgraphconfig').serialize();
+  let url = window.location.protocol + "//" + window.location.host + "/part/?" + $('#filt_form').serialize() + "&" + $('#formgraphconfig').serialize();
   url = "mailto:?subject=EcoPart%20page%20share&body=" + encodeURIComponent("Hello,\n\nAn EcoPart user want share this page with you \n" + url);
   if (e.ctrlKey)
       window.open(url, '_blank');
@@ -372,7 +372,7 @@ $(document).ready(function() {
 <script src="/static/openlayers/ol.js" type="text/javascript"></script>
 
 <script>
-var map,vectorSource,SampleSource,SampleSourceNotVisible,MapPopupContent;
+let map,vectorSource,SampleSource,SampleSourceNotVisible,SampleSourceVisible,SampleSourceExportCTD,MapPopupContent;
 function InitMap() {
   let mousePositionControl = new ol.control.MousePosition({
   coordinateFormat: ol.coordinate.createStringXY(4),
@@ -384,11 +384,10 @@ map = new ol.Map({
     new ol.layer.Tile({
       source: new ol.source.XYZ({
             attributions: 'Tiles © <a href="https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer">ArcGIS</a>',
-
-    {% if LocalGIS %}
-        url: '/static/tiles/tile_{z}_{y}_{x}.jpg',maxZoom:6
+            url:    {% if LocalGIS %}
+         '/static/tiles/tile_{z}_{y}_{x}.jpg',maxZoom:6
     {% else %}
-              url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
     {% endif %}
             })
     })
@@ -401,30 +400,30 @@ map = new ol.Map({
   target: 'map',
   view: new ol.View({
     //projection: 'EPSG:4326',
-    projection: 'EPSG:3857', // Valeur par défaut
+    //projection: 'EPSG:3857', // Valeur par défaut
     center: [0, 47],
     showFullExtent:true,
     //zoom:1,
-    extent:[-2.0037507067161843E7,-1.9971868880408604E7*145/85, 2.0037507067161843E7, 1.997186888040863E7*145/85],
+    {#extent:[-2.0037507067161843E7,-1.9971868880408604E7*145/85, 2.0037507067161843E7, 1.997186888040863E7*200/85],#}
     zoom: parseFloat($("#map").css('height'))/450, // Mise à l'echelle, affiche toute la hauteur à l'echelle 1 sur une zone de 450px de haut
   })
 });
 
 // a DragBox interaction used to select features by drawing boxes
-var dragBox = new ol.interaction.DragBox({
-  condition: ol.events.condition.altKeyOnly,
-  style: new ol.style.Style({
-    stroke: new ol.style.Stroke({color: [0, 0, 255, 1]})
-  })
-});
+  let dragBox = new ol.interaction.DragBox({
+    condition: ol.events.condition.altKeyOnly,
+    style: new ol.style.Style({
+      stroke: new ol.style.Stroke({color: [0, 0, 255, 1]})
+    })
+  });
 
-map.addInteraction(dragBox);
+  map.addInteraction(dragBox);
 
 dragBox.on('boxend', function(e) {
-  var extent = dragBox.getGeometry().getExtent();
+  let extent = dragBox.getGeometry().getExtent();
   // Calcule les tableau sous forme X/Longitude , Y/Lattitude
-  var bottomleft= ol.proj.transform([extent[0], extent[1]], 'EPSG:3857', 'EPSG:4326') ;
-  var topright= ol.proj.transform([extent[2], extent[3]], 'EPSG:3857', 'EPSG:4326') ;
+  let bottomleft = ol.proj.transform([extent[0], extent[1]], 'EPSG:3857', 'EPSG:4326');
+  let topright = ol.proj.transform([extent[2], extent[3]], 'EPSG:3857', 'EPSG:4326');
   if((bottomleft[0]<-180)||(bottomleft[0]>180))
       bottomleft[0]=(bottomleft[0]+180+720)%360-180;
   if((topright[0]<-180)||(topright[0]>180))
@@ -439,58 +438,58 @@ dragBox.on('boxend', function(e) {
 
 // Create vector source and the feature to it.
 vectorSource = new ol.source.Vector();
-var vectorLayer= new ol.layer.Vector({  source: vectorSource });
+  let vectorLayer = new ol.layer.Vector({source: vectorSource});
 
-var RedIconStyle = new ol.style.Style({
-        image: new ol.style.Icon({
-          anchor: [0.5, 0.5],
-          size: [40, 40],
-          offset: [52, 0],
-          opacity: 1,
-          scale: 0.19,
-          src: '/static/dots2.png'
-        })
-      });
-var OrangeIconStyle = new ol.style.Style({
-        image: new ol.style.Icon({
-          anchor: [0.5, 0.5],
-          size: [40, 40],
-          offset: [208, 0],
-          opacity: 1,
-          scale: 0.19,
-          src: '/static/dots2.png'
-        })
-      });
-var BlackIconStyle = new ol.style.Style({
-        image: new ol.style.Icon({
-          anchor: [0.5, 0.5],
-          size: [40, 40],
-          offset: [156, 0],
-          opacity: 1,
-          scale: 0.19,
-          src: '/static/dots2.png'
-        })
-      });
+  let RedIconStyle = new ol.style.Style({
+    image: new ol.style.Icon({
+      anchor: [0.5, 0.5],
+      size: [40, 40],
+      offset: [52, 0],
+      opacity: 1,
+      scale: 0.19,
+      src: '/static/dots2.png'
+    })
+  });
+  let OrangeIconStyle = new ol.style.Style({
+    image: new ol.style.Icon({
+      anchor: [0.5, 0.5],
+      size: [40, 40],
+      offset: [208, 0],
+      opacity: 1,
+      scale: 0.19,
+      src: '/static/dots2.png'
+    })
+  });
+  let BlackIconStyle = new ol.style.Style({
+    image: new ol.style.Icon({
+      anchor: [0.5, 0.5],
+      size: [40, 40],
+      offset: [156, 0],
+      opacity: 1,
+      scale: 0.19,
+      src: '/static/dots2.png'
+    })
+  });
 
-var GreenIconStyle = new ol.style.Style({
-        image: new ol.style.Icon({
-          anchor: [0.5, 0.5],
-          size: [40, 40],
-          offset: [0, 0],
-          opacity: 1,
-          scale: 0.19,
-          src: '/static/dots2.png'
-        })
-      });
+  let GreenIconStyle = new ol.style.Style({
+    image: new ol.style.Icon({
+      anchor: [0.5, 0.5],
+      size: [40, 40],
+      offset: [0, 0],
+      opacity: 1,
+      scale: 0.19,
+      src: '/static/dots2.png'
+    })
+  });
 
-SampleSource = new ol.source.Vector();
+  SampleSource = new ol.source.Vector();
 SampleSourceNotVisible= new ol.source.Vector();
 SampleSourceVisible= new ol.source.Vector();
 SampleSourceExportCTD= new ol.source.Vector();
-var SampleLayer= new ol.layer.Vector({   source:SampleSource,style: GreenIconStyle });
-var SampleNotVisibleLayer= new ol.layer.Vector({  source:SampleSourceNotVisible,style: BlackIconStyle });
-var SampleVisibleLayer= new ol.layer.Vector({  source:SampleSourceVisible,style: RedIconStyle });
-var SampleExportCTDLayer= new ol.layer.Vector({  source:SampleSourceExportCTD,style: OrangeIconStyle});
+  let SampleLayer = new ol.layer.Vector({source: SampleSource, style: GreenIconStyle});
+  let SampleNotVisibleLayer = new ol.layer.Vector({source: SampleSourceNotVisible, style: BlackIconStyle});
+  let SampleVisibleLayer = new ol.layer.Vector({source: SampleSourceVisible, style: RedIconStyle});
+  let SampleExportCTDLayer = new ol.layer.Vector({source: SampleSourceExportCTD, style: OrangeIconStyle});
 // Add the vector layer to the map.
 map.addLayer(vectorLayer);
 map.addLayer(SampleLayer);
@@ -498,24 +497,23 @@ map.addLayer(SampleNotVisibleLayer);
 map.addLayer(SampleVisibleLayer);
 map.addLayer(SampleExportCTDLayer);
 
-var MapPopupElt = document.getElementById('MapPopup');
-var popup = new ol.Overlay({
-  element: MapPopupElt,
-  positioning: 'bottom-center',
-  stopEvent: false,
-  offset: [3, 0]
-});
-map.addOverlay(popup);
+  let MapPopupElt = document.getElementById('MapPopup');
+  let popup = new ol.Overlay({
+    element: MapPopupElt,
+    positioning: 'bottom-center',
+    stopEvent: false,
+    offset: [3, 0]
+  });
+  map.addOverlay(popup);
 // display popup on click
 map.on('click', function(evt) {
-  var feature = map.forEachFeatureAtPixel(evt.pixel,
-      function(feature) {
+  let feature = map.forEachFeatureAtPixel(evt.pixel,
+      function (feature) {
         return feature;
       });
 
   if (feature) {
-    var coordinates = feature.getGeometry().getCoordinates();
-{#    popup.setPosition(coordinates); Utilisation de l'evt plutot pour traiter le monde cyclique#}
+    let coordinates = feature.getGeometry().getCoordinates();
     popup.setPosition(evt.coordinate);
 {#    console.log(coordinates,evt.coordinate);#}
     MapPopupContent='Get Data for sample '+feature.get('psampleid');
@@ -540,26 +538,26 @@ function GetMapPopupContent(){
 }
 
 function DrawSelectionRectangle(a){ {# X Y X Y  #}
-  var ring = [ [a[0], a[1]], [a[2], a[1]],  [a[2], a[3]], [a[0], a[3]] , [a[0], a[1]] ];
-  var polygon = new ol.geom.Polygon([ring]);
+  let ring = [[a[0], a[1]], [a[2], a[1]], [a[2], a[3]], [a[0], a[3]], [a[0], a[1]]];
+  let polygon = new ol.geom.Polygon([ring]);
   polygon.transform('EPSG:4326', 'EPSG:3857');
   // Create feature with polygon.
-  var feature = new ol.Feature(polygon);
+  let feature = new ol.Feature(polygon);
   vectorSource.clear();
   vectorSource.addFeature(feature);
 }
 
 function DrawInputOnMap()
 {
-var MapOutW=parseFloat($("#MapOutW").val());
-var MapOutN=parseFloat($("#MapOutN").val());
-var MapOutE=parseFloat($("#MapOutE").val());
-var MapOutS=parseFloat($("#MapOutS").val());
-if(MapOutW>MapOutE) {
-  DrawSelectionRectangle([MapOutW, MapOutN, MapOutE+360, MapOutS]);
-} else {
-  DrawSelectionRectangle([MapOutW, MapOutN, MapOutE, MapOutS]);
-}
+  let MapOutW = parseFloat($("#MapOutW").val());
+  let MapOutN = parseFloat($("#MapOutN").val());
+  let MapOutE = parseFloat($("#MapOutE").val());
+  let MapOutS = parseFloat($("#MapOutS").val());
+  if(MapOutW>MapOutE) {
+    DrawSelectionRectangle([MapOutW, MapOutN, MapOutE+360, MapOutS]);
+  } else {
+    DrawSelectionRectangle([MapOutW, MapOutN, MapOutE, MapOutS]);
+  }
 }
 function ClearGeoFilter()
 {
@@ -577,12 +575,13 @@ $(function(){  {# Initialisation de la carte #}
 
 $(function () {
 {#  Gestion du popup de selection rapide réduit #}
-  $('body').on("click","#redhelpertab td",function () {
-    var begin=parseInt($(this).data('begin'));
-    var end=parseInt($(this).data('end'));
-    var rowtype=$(this).closest('tr').data('type');
-    var i;
-    var gpr=$('#gpr');
+  let jbody=$('body');
+  jbody.on("click","#redhelpertab td",function () {
+    const begin = parseInt($(this).data('begin'));
+    const end = parseInt($(this).data('end'));
+    const rowtype = $(this).closest('tr').data('type');
+    let i;
+    const gpr = $('#gpr');
     if(end===0)
       gpr.find("option[value^='"+rowtype+"']").prop('selected',false);
     else
@@ -591,16 +590,16 @@ $(function () {
     $("#redhelpericon").popover('hide');
     gpr.trigger('change');
   });
-  var srcredhelpericon=$("#srcredhelpericon");
+  let srcredhelpericon = $("#srcredhelpericon");
   $("#redhelpericon").data('content',srcredhelpericon.html()).popover();
   srcredhelpericon.remove();
 {#  Gestion du popup de selection rapide détaillé #}
-  $('body').on("click","#dethelpertab td",function () {
-    var begin=parseInt($(this).data('begin'));
-    var end=parseInt($(this).data('end'));
-    var rowtype=$(this).closest('tr').data('type');
-    var i;
-    var gpr=$('#gpd');
+  jbody.on("click","#dethelpertab td",function () {
+    const begin = parseInt($(this).data('begin'));
+    const end = parseInt($(this).data('end'));
+    const rowtype = $(this).closest('tr').data('type');
+    let i;
+    const gpr = $('#gpd');
     if(end===0)
       gpr.find("option[value^='"+rowtype+"']").prop('selected',false);
     else
@@ -613,10 +612,9 @@ $(function () {
   $("#dethelpericon").data('content',srcredhelpericon.html()).popover();
   srcredhelpericon.remove();
 {#  Gestion du popup de selection rapide CTD #}
-  $('body').on("click","#ctdhelpertab td",function () {
-    var begin=parseInt($(this).data('begin'));
-    var i;
-    var gpr=$('#ctd');
+  jbody.on("click","#ctdhelpertab td",function () {
+    const begin = parseInt($(this).data('begin'));
+    const gpr = $('#ctd');
     if(begin===0)
       gpr.find("option").prop('selected',false);
     else
