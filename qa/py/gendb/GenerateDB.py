@@ -14,6 +14,7 @@ from gendb.UVP5FileMaker import GenerateUVP5Folder
 from gendb.UVPAppFileMaker import GenerateUVPAppFolder
 from gendb.LISSTFileMaker import GenerateLISSTFolder
 from gendb.PartProjectGeneratorGeo import PartProjectGeneratorTypeGeo
+from gendb.PartProjectGeneratorGeoMosaic import PartProjectGeneratorTypeGeoMosaic
 
 
 HERE = Path(dirname(realpath(__file__)))
@@ -118,3 +119,7 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
 
     PartPrj = PartProjectGeneratorTypeGeo()
     PartPrj.Generate("Geo Sample on all the map")
+
+    PartPrj = PartProjectGeneratorTypeGeoMosaic()
+    PartPrj.Generate("Geo Sample from Mosaic")
+

@@ -14,8 +14,6 @@ class PartProjectGeneratorTypeGeo:
         self.Prj = database.part_projects()
         self.Prj.ptitle = Title
         self.Prj.ownerid = OwnerID
-        self.Zooprojid = db.session.query(appli.database.Projects).filter_by(title="EcoPart TU Zoo Project 1").first().projid
-        self.Prj.projid = self.Zooprojid
         self.Prj.instrumtype = 'uvp5'
         self.Prj.op_name = 'My OP Name'
         self.Prj.op_email = 'opname@test.com'
@@ -28,7 +26,7 @@ class PartProjectGeneratorTypeGeo:
         db.session.commit()
         self.pprojid = self.Prj.pprojid
         logging.info(f"Project {self.pprojid} created : {Title}")
-        for i in range(1,89):
+        for i in range(1,90):
             self.GenerateSample(f"sampleNE{i}",i, i*1.01,-46.1+1.01*i)
             self.GenerateSample(f"sampleSE{i}",i,-i*1.01,-46.1+1.01*i)
             self.GenerateSample(f"sampleNW{i}",i, i*1.01,-86.1-1.01*i)
