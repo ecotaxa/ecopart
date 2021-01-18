@@ -54,11 +54,14 @@ If you use EcoTaxa or Ecotaxa particle module in your work, we would appreciate 
 
 {#----------- Début formulaire filtrage -------------#}
 <table id="filter1" style="width: 95%">
-  <tr><td style="vertical-align: top">
+  <tr><td style="vertical-align: top; position: relative;">
 <button class="btn btn-primary btn-xs" style="width: 100%" id=SharePageBtn type="button"
 title="Email a link to this page, including the current filters. Press CTRL to open it on another tab (usefull if you use GMail)">
   <span class="glyphicon glyphicon-link"></span> Share page</button>
 
+<button class="btn btn-primary btn-xs" style="width: 100%;position: absolute;bottom: 5px;left: 0;line-height: 1.1" id=btMapProj type="button"
+title="Allows to change map projection between EPSG:3857 (default), and EPSG:4326 (most interesting to view data near poles)">
+  <i class="fas fa-compass"></i>&nbsp;&nbsp;toggle <br>map projection</button>
   </td>
     <td>
 <table style="width:100%;" id="geofilter">
@@ -104,10 +107,7 @@ title="Email a link to this page, including the current filters. Press CTRL to o
   <span style="color: red;"><b>Visible</b> : Graphs are visible and limited CTD & particle export allowed </span><br>
   <span style="color: orange;"><b>Exportable</b> : Full CTD & particle export allowed (plankton hidden or absent)</span><br>
   <span style="color: green;"><b>Exportable</b> : Full CTD & particle & plankton export allowed </span><br>
-
 </div>
-
-
 </div>
 
 </form>
@@ -373,7 +373,10 @@ $(document).ready(function() {
 
 <script>
 let map,vectorSource,SampleSource,SampleSourceNotVisible,SampleSourceVisible,SampleSourceExportCTD,MapPopupContent;
-function InitMap() {
+function InitMap(projection) {
+  const is4326=(projection==='4326');
+  projection=is4326?'EPSG:4326':'EPSG:3857';
+  $("#map").html("");
   let mousePositionControl = new ol.control.MousePosition({
   coordinateFormat: ol.coordinate.createStringXY(4),
   projection: 'EPSG:4326',
@@ -399,13 +402,13 @@ map = new ol.Map({
   }).extend([mousePositionControl]),
   target: 'map',
   view: new ol.View({
-    //projection: 'EPSG:4326',
-    //projection: 'EPSG:3857', // Valeur par défaut
+    projection:projection,
     center: [0, 47],
     showFullExtent:true,
-    //zoom:1,
-    {#extent:[-2.0037507067161843E7,-1.9971868880408604E7*145/85, 2.0037507067161843E7, 1.997186888040863E7*200/85],#}
-    zoom: parseFloat($("#map").css('height'))/450, // Mise à l'echelle, affiche toute la hauteur à l'echelle 1 sur une zone de 450px de haut
+    zoom:is4326?1.5:1,
+    extent: is4326?[-360.0,-90, 360.0 , 90.0]
+              :[-2.0037507067161843E7*2,-1.9971868880408604E7*200/85, 2.0037507067161843E7*2, 1.997186888040863E7*200/85],
+
   })
 });
 
@@ -422,8 +425,9 @@ map = new ol.Map({
 dragBox.on('boxend', function(e) {
   let extent = dragBox.getGeometry().getExtent();
   // Calcule les tableau sous forme X/Longitude , Y/Lattitude
-  let bottomleft = ol.proj.transform([extent[0], extent[1]], 'EPSG:3857', 'EPSG:4326');
-  let topright = ol.proj.transform([extent[2], extent[3]], 'EPSG:3857', 'EPSG:4326');
+  const mapProjectionCode=map.getView().getProjection().getCode();
+  let bottomleft = ol.proj.transform([extent[0], extent[1]], mapProjectionCode, 'EPSG:4326');
+  let topright = ol.proj.transform([extent[2], extent[3]], mapProjectionCode, 'EPSG:4326');
   if((bottomleft[0]<-180)||(bottomleft[0]>180))
       bottomleft[0]=(bottomleft[0]+180+720)%360-180;
   if((topright[0]<-180)||(topright[0]>180))
@@ -483,9 +487,9 @@ vectorSource = new ol.source.Vector();
   });
 
   SampleSource = new ol.source.Vector();
-SampleSourceNotVisible= new ol.source.Vector();
-SampleSourceVisible= new ol.source.Vector();
-SampleSourceExportCTD= new ol.source.Vector();
+  SampleSourceNotVisible= new ol.source.Vector();
+  SampleSourceVisible= new ol.source.Vector();
+  SampleSourceExportCTD= new ol.source.Vector();
   let SampleLayer = new ol.layer.Vector({source: SampleSource, style: GreenIconStyle});
   let SampleNotVisibleLayer = new ol.layer.Vector({source: SampleSourceNotVisible, style: BlackIconStyle});
   let SampleVisibleLayer = new ol.layer.Vector({source: SampleSourceVisible, style: RedIconStyle});
@@ -531,7 +535,7 @@ map.on('click', function(evt) {
   else
     $(MapPopupElt).popover('destroy');
 });
-
+DoSearch();
 } //InitMap
 function GetMapPopupContent(){
   return MapPopupContent;
@@ -540,7 +544,8 @@ function GetMapPopupContent(){
 function DrawSelectionRectangle(a){ {# X Y X Y  #}
   let ring = [[a[0], a[1]], [a[2], a[1]], [a[2], a[3]], [a[0], a[3]], [a[0], a[1]]];
   let polygon = new ol.geom.Polygon([ring]);
-  polygon.transform('EPSG:4326', 'EPSG:3857');
+  const mapProjectionCode=map.getView().getProjection().getCode();
+  polygon.transform('EPSG:4326', mapProjectionCode);
   // Create feature with polygon.
   let feature = new ol.Feature(polygon);
   vectorSource.clear();
@@ -569,8 +574,7 @@ function ClearDateFilter()
   $("#filt_fromdate,#filt_todate").val("");
 }
 $(function(){  {# Initialisation de la carte #}
- $("#map").html("");
-  InitMap();
+  InitMap('{{ mapproj }}');
  });
 
 $(function () {
@@ -626,6 +630,14 @@ $(function () {
   $("#ctdhelpericon").data('content',srcredhelpericon.html()).popover();
   srcredhelpericon.remove();
   DrawInputOnMap();
+  {#Gestion click du bouton pour toggle projection#}
+  $('#btMapProj').click(function (){
+    const mapProjectionCode=map.getView().getProjection().getCode();
+    $.post('/setmapproj/',{value:((mapProjectionCode==='EPSG:4326')?'':'4326')}
+          ,function(data) {
+            InitMap(data);
+          });
+  });
 });
 </script>
 <div id='MapPopup'></div>

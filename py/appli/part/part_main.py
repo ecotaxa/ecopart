@@ -1,4 +1,4 @@
-from flask import render_template, g, json,request
+from flask import render_template, g, json, request, make_response
 from appli import app,PrintInCharte,database
 from wtforms  import Form, SelectField,SelectMultipleField
 from flask_login import current_user
@@ -35,7 +35,11 @@ def indexPart():
     g.useselect4 = True
     # noinspection PyUnresolvedReferences
     return PrintInCharte(
-        render_template('part/index.html', form=form,LocalGIS=app.config.get("LOCALGIS",False),reqfields=request.args))
+        render_template('part/index.html'
+                        , form=form
+                        ,LocalGIS=app.config.get("LOCALGIS",False)
+                        ,reqfields=request.args
+                        ,mapproj='4326' if request.cookies.get('mapproj')=='4326' else '3857'))
 
 def GetSQLVisibility():
     sqljoin = ""
@@ -280,3 +284,10 @@ def Partgetsamplepopover(psampleid):
     Date/Time : {sampledate}
     """.format(**data)
     return txt
+
+@app.route('/setmapproj/' , methods=['POST'])
+def routesetmapproj():
+    value= '4326' if  request.form.get('value')=='4326' else '3857'
+    resp = make_response(value)
+    resp.set_cookie('mapproj', value)
+    return resp
