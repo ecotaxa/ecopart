@@ -31,7 +31,7 @@ class PartProjectGeneratorTypeGeo:
             self.GenerateSample(f"sampleSE{i}",i,-i*1.01,-46.1+1.01*i)
             self.GenerateSample(f"sampleNW{i}",i, i*1.01,-86.1-1.01*i)
             self.GenerateSample(f"sampleSW{i}", i, -i * 1.01, -86.1 - 1.01 * i)
-            self.GenerateSample(f"sampleSW{i}", i, 30+i * 0.1,  4.01 * i)
+            self.GenerateSample(f"sampleCirc{i}", i, 30+i * 0.1,  4.01 * i)
 
     def GenerateSample(self, SampleName,Hour,latitude,longitude) -> database.part_samples:
         Sample = database.part_samples()

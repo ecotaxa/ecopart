@@ -120,12 +120,12 @@ ACQ_CONF,ACQ_ROV,2,2.000,1,1,0,0,1,1,70,2,700,2.0,50,10,0,1000,0,40,l.picheral,0
                 with zipfile.ZipFile(PartZipFilePath, "w", allowZip64=True, compression=zipfile.ZIP_DEFLATED) as zf:
                     zf.write(MetadataFilePath,"metadata.ini")
                     zf.write(PartFilePath,"particules.csv")
-                if S.profileid in ('sample02','sample03'):
+                if S.profileid in ('sample02','sample03','sampleT2','sampleT3'):
                     CTDDirPath = FullDirPath / "ctd_data_cnv"
                     if not CTDDirPath.exists():
                         CTDDirPath.mkdir()
                     CtdFile = CTDDirPath / (S.profileid + ".ctd")
-                    shutil.copy(FullDirPath/".."/ ("ctd1.ctd" if S.profileid=='sample02' else "ctd2.ctd"),CtdFile)
+                    shutil.copy(FullDirPath/".."/ ("ctd1.ctd" if '2' in S.profileid else "ctd2.ctd"),CtdFile)
 
 
 if __name__ == "__main__":

@@ -120,7 +120,6 @@ def part_drawchart():
                     XLabel='Biovolume red. class %s (%s) mm3 l-1'%(c,GetClassLimitTxt(PartRedClassLimit,int(c[2:])))
                 if not ProfilVertical:
                     if TimeAbsolute:
-                        graph[i].xaxis.set_major_formatter(dateFormaterYMD())
                         XLabel="X : date, Y : "+XLabel
                     else:
                         XLabel="X : time (hour), Y : "+XLabel
@@ -197,7 +196,6 @@ def part_drawchart():
                     XLabel='pressure [db]'
                 if not ProfilVertical:
                     if TimeAbsolute:
-                        graph[i].xaxis.set_major_formatter(dateFormaterYMD())
                         XLabel="X : date, Y : "+XLabel
                     else:
                         XLabel="X : time (hour), Y : "+XLabel
@@ -258,13 +256,11 @@ def part_drawchart():
              {}
             order by lineno""".format(DepthFilter)
             graph=list(range(0,len(gctd)))
-            totvalcount = [0]*len(gctd)
             for i, c in enumerate(gctd):
                 graph[i]=Fig.add_subplot(FigSizeY,FigSizeX,chartid+1)
                 XLabel ='CTD %s '%(CTDFixedColByKey.get(c))
                 if not ProfilVertical:
                     if TimeAbsolute:
-                        graph[i].xaxis.set_major_formatter(dateFormaterYMD())
                         XLabel = "X : date, Y : " + XLabel
                     else:
                         XLabel="X : time (hour), Y : "+XLabel
@@ -292,11 +288,6 @@ def part_drawchart():
                     color = PrjColorMap[rs['pprojid']] if len(PrjColorMap) > 1 else \
                         (SampleColorMap[rs['psampleid']] if len(SampleColorMap) <25 else None)
                     graph[i].plot(data[:valcount,1],data[:valcount,0],color=color)
-                    totvalcount[i]+=len(data[:valcount,1])
-            for i in range(len(gctd)): # permet de gérer l'affichage correct s'il n'y a pas de données en time absolu
-                if totvalcount[i]==0:
-                    graph[i].set_xscale('linear')
-                    graph[i].set_yscale('linear')
 
         # traitement des Graphes TAXO
         if len(gtaxo)>0:
@@ -335,18 +326,10 @@ def part_drawchart():
                 XLabel =f'{NomTaxo} #/m3'
                 if not ProfilVertical:
                     if TimeAbsolute:
-                        graph[i].xaxis.set_major_formatter(dateFormaterYMD())
                         XLabel="X : date, Y : "+XLabel
                     else:
                         XLabel="X : time (hour), Y : "+XLabel
                 graph[i].set_xlabel(XLabel)
-                # graph[i].set_yscale('log')
-                # def format_fn(tick_val, tick_pos):
-                #     if -int(tick_val) <len(DepthTaxoHistoLimit) and -int(tick_val) >=0:
-                #         return DepthTaxoHistoLimit[-int(tick_val)]
-                #     else:
-                #         return ''
-
                 chartid += 1
                 for isample,rs in enumerate(samples):
                     if rs['visibility'][1]>='V': # Visible ou exportable
@@ -360,7 +343,7 @@ def part_drawchart():
                         TimeValues={}
                         for rnum,r in enumerate(DBData):
                             data[rnum]=(r['y'],r['x'])
-                            if TimeAbsolute and not ProfilVertical:
+                            if TimeAbsolute:
                                 TimeValues[r['y']]=r['datetime']
                         if ProfilVertical:
                             bins=GetTaxoHistoLimit(data[:,0].max())
@@ -404,15 +387,25 @@ def part_drawchart():
                             bottom =min(bottom,-max(WV.keys()))
                         if top > 0: top = 0
                         if bottom >= top: bottom = top - 10
-                    else:
-                        bottom=0
-                        if top<1:
-                            top=1
-                        if bottom >= top:
-                            top = bottom + 1
-                    graph[i].set_ylim(bottom, top)
+                        graph[i].set_ylim(bottom, top)
                     graph[i].set_xscale('linear')
                     graph[i].set_yscale('linear')
+            if not ProfilVertical:
+                for g in graph:
+                    bottom, top = g.get_ylim()
+                    bottom=0
+                    if top<1:
+                        top=1
+                    if bottom >= top:
+                        top = bottom + 1
+                    g.set_ylim(bottom, top)
+
+        if TimeAbsolute:
+            for g in Fig.axes:
+                if g.get_xlim()[0]<0:
+                    g.set_xlim(left=1.0, right=2.0) # permet d'eviter les erreurs si pas de données
+                g.xaxis.set_major_formatter(dateFormaterYMD())
+
         # on ajuste la disposition avant de placer le dernier qui est en placement forcé et perturbe le tight_layout
         Fig.tight_layout()
         # generation du graphique qui liste les projets
