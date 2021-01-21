@@ -1,51 +1,64 @@
-from appli import db,app, VaultRootDir,EncodeEqualList,CreateDirConcurrentlyIfNeeded
 from pathlib import Path
-import appli.part.database as partdatabase, datetime,csv,math,zipfile,io
 import numpy as np
+import appli.part.database as partdatabase
+import csv
+import datetime
+import io
+import math
+import zipfile
 from appli import database
+from appli import db, app, VaultRootDir, EncodeEqualList, CreateDirConcurrentlyIfNeeded
 from appli.part import CTDFixedCol
+
 
 # Purge les espace et converti le Nan en vide
 def CleanValue(v):
     if type(v) != str:
         return v
-    v=v.strip()
-    if (v.lower()=='nan') or (v.lower()=='na') :
-        v=''
-    if v.lower().find('inf')>=0:
-        v=''
+    v = v.strip()
+    if (v.lower() == 'nan') or (v.lower() == 'na'):
+        v = ''
+    if v.lower().find('inf') >= 0:
+        v = ''
     return v
+
+
 # retourne le flottant image de la chaine en faisant la conversion ou None
 def ToFloat(value):
-    if value=='': return None
+    if value == '':
+        return None
     try:
         return float(value)
     except ValueError:
         return None
 
 
-def GetTicks(MaxVal):
-    if np.isnan(MaxVal):
-        MaxVal=100 #Arbitraire si MaxVal n'est pas valide
-    if MaxVal<1:
-        MaxVal=1
-    Step=math.pow(10,math.floor(math.log10(MaxVal)))
-    if(MaxVal/Step)<3:
-        Step=Step/2
-    return np.arange(0,MaxVal,Step)
+def GetTicks(max_val):
+    if np.isnan(max_val):
+        max_val = 100  # Arbitraire si max_val n'est pas valide
+    if max_val < 1:
+        max_val = 1
+    step = math.pow(10, math.floor(math.log10(max_val)))
+    if (max_val / step) < 3:
+        step = step / 2
+    return np.arange(0, max_val, step)
+
 
 def GenerateReducedParticleHistogram(psampleid):
     """
-    Génération de l'histogramme particulaire détaillé (45 classes) et réduit (15 classes) à partir de l'histogramme détaillé
+    Génération de l'histogramme particulaire détaillé (45 classes) et réduit (15 classes)
+    à partir de l'histogramme détaillé
     :param psampleid:
     :return:
     """
-    if database.GetAll("select count(*) from part_histopart_det where psampleid="+str(psampleid))[0][0]<=0:
+    if database.GetAll("select count(*) from part_histopart_det where psampleid=" + str(psampleid))[0][0] <= 0:
         return "<span style='color: red;'>Reduced Histogram can't be computer without Detailed histogram</span>"
     database.ExecSQL("delete from part_histopart_reduit where psampleid=" + str(psampleid))
     sql = """insert into part_histopart_reduit(psampleid, lineno, depth,datetime,  watervolume
-    , class01, class02, class03, class04, class05, class06, class07, class08, class09, class10, class11, class12, class13, class14, class15
-    , biovol01, biovol02, biovol03, biovol04, biovol05, biovol06, biovol07, biovol08, biovol09, biovol10, biovol11, biovol12, biovol13, biovol14, biovol15
+    , class01, class02, class03, class04, class05, class06, class07, class08, class09, class10, class11, class12
+    , class13, class14, class15
+    , biovol01, biovol02, biovol03, biovol04, biovol05, biovol06, biovol07, biovol08, biovol09, biovol10, biovol11
+    , biovol12, biovol13, biovol14, biovol15
     )
     select psampleid, lineno, depth,datetime,  watervolume,
       coalesce(class01,0)+coalesce(class02,0)+coalesce(class03,0) as c1, 
@@ -78,12 +91,12 @@ def GenerateReducedParticleHistogram(psampleid):
       coalesce(biovol37,0)+coalesce(biovol38,0)+coalesce(biovol39,0) as bv13,
       coalesce(biovol40,0)+coalesce(biovol41,0)+coalesce(biovol42,0) as bv14, 
       coalesce(biovol43,0)+coalesce(biovol44,0)+coalesce(biovol45,0) as bv15
-    from part_histopart_det where psampleid="""+str(psampleid)
+    from part_histopart_det where psampleid=""" + str(psampleid)
     database.ExecSQL(sql)
     return " reduced Histogram computed"
 
 
-def ImportCTD(psampleid,user_name,user_email):
+def ImportCTD(psampleid, user_name, user_email):
     """
     Importe les données CTD 
     :param user_email:
@@ -92,88 +105,102 @@ def ImportCTD(psampleid,user_name,user_email):
     :return:
     """
 
-    UvpSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
-    if UvpSample is None:
-        raise Exception("ImportCTD: Sample %d missing"%psampleid)
-    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=UvpSample.pprojid).first()
-    if Prj.instrumtype == 'uvp6remote':
-        rawfileinvault = GetPathForRawHistoFile(UvpSample.psampleid)
-        zf=zipfile.ZipFile(rawfileinvault, "r")
-        if 'CTD.txt' not in zf.namelist() :
+    uvp_sample = db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
+    if uvp_sample is None:
+        raise Exception("ImportCTD: Sample %d missing" % psampleid)
+    prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=uvp_sample.pprojid).first()
+    if prj.instrumtype == 'uvp6remote':
+        rawfileinvault = GetPathForRawHistoFile(uvp_sample.psampleid)
+        zf = zipfile.ZipFile(rawfileinvault, "r")
+        if 'CTD.txt' not in zf.namelist():
             app.logger.info("CTD.txt file missing")
             return False
-        fctb=zf.open('CTD.txt', 'r')
-        tsvfile = io.TextIOWrapper(fctb,encoding='latin_1')
+        fctb = zf.open('CTD.txt', 'r')
+        tsvfile = io.TextIOWrapper(fctb, encoding='latin_1')
     else:  # process normal par traitement du repertoire des données
-        ServerRoot = Path(app.config['SERVERLOADAREA'])
-        DossierUVPPath = ServerRoot / Prj.rawfolder
-        CtdFile =  DossierUVPPath / "ctd_data_cnv"/(UvpSample.profileid+".ctd")
-        if not CtdFile.exists():
-            app.logger.info("CTD file %s missing", CtdFile.as_posix())
+        server_root = Path(app.config['SERVERLOADAREA'])
+        dossier_uvp_path = server_root / prj.rawfolder
+        ctd_file = dossier_uvp_path / "ctd_data_cnv" / (uvp_sample.profileid + ".ctd")
+        if not ctd_file.exists():
+            app.logger.info("CTD file %s missing", ctd_file.as_posix())
             return False
-        app.logger.info("Import CTD file %s", CtdFile.as_posix())
-        tsvfile=CtdFile.open('r',encoding='latin_1')
+        app.logger.info("Import CTD file %s", ctd_file.as_posix())
+        tsvfile = ctd_file.open('r', encoding='latin_1')
 
-    Rdr = csv.reader(tsvfile, delimiter='\t')
-    HeadRow=Rdr.__next__()
+    rdr = csv.reader(tsvfile, delimiter='\t')
+    head_row = rdr.__next__()
     # Analyser la ligne de titre et assigner à chaque ID l'attribut
     # Construire la table d'association des attributs complémentaires.
-    ExtramesID=0
-    Mapping=[]
-    ExtraMapping ={}
-    for ic,c in enumerate(HeadRow):
-        clow=c.lower().strip()
-        if clow=="chloro fluo [mg chl/m3]":clow="chloro fluo [mg chl m-3]"
-        if clow == "conductivity [ms/cm]": clow = "conductivity [ms cm-1]"
-        if clow == "depth [salt water, m]": clow = "depth [m]"
-        if clow == "fcdom factory [ppb qse]": clow = "fcdom [ppb qse]"
-        if clow == "in situ density anomaly [kg/m3]": clow = "in situ density anomaly [kg m-3]"
-        if clow == "nitrate [µmol/l]": clow = "nitrate [umol l-1]"
-        if clow == "oxygen [µmol/kg]": clow = "oxygen [umol kg-1]"
-        if clow == "oxygen [ml/l]": clow = "oxygen [ml l-1]"
-        if clow == "par [µmol m-2 s-1]": clow = "par [umol m-2 s-1]"
-        if clow == "potential density anomaly [kg/m3]": clow = "potential density anomaly [kg m-3]"
-        if clow == "pressure in water column [db]": clow = "pressure [db]"
-        if clow == "spar [µmol m-2 s-1]": clow = "spar [umol m-2 s-1]"
+    extrames_id: int = 0
+    mapping = []
+    extra_mapping = {}
+    for ic, c in enumerate(head_row):
+        clow = c.lower().strip()
+        if clow == "chloro fluo [mg chl/m3]":
+            clow = "chloro fluo [mg chl m-3]"
+        if clow == "conductivity [ms/cm]":
+            clow = "conductivity [ms cm-1]"
+        if clow == "depth [salt water, m]":
+            clow = "depth [m]"
+        if clow == "fcdom factory [ppb qse]":
+            clow = "fcdom [ppb qse]"
+        if clow == "in situ density anomaly [kg/m3]":
+            clow = "in situ density anomaly [kg m-3]"
+        if clow == "nitrate [µmol/l]":
+            clow = "nitrate [umol l-1]"
+        if clow == "oxygen [µmol/kg]":
+            clow = "oxygen [umol kg-1]"
+        if clow == "oxygen [ml/l]":
+            clow = "oxygen [ml l-1]"
+        if clow == "par [µmol m-2 s-1]":
+            clow = "par [umol m-2 s-1]"
+        if clow == "potential density anomaly [kg/m3]":
+            clow = "potential density anomaly [kg m-3]"
+        if clow == "pressure in water column [db]":
+            clow = "pressure [db]"
+        if clow == "spar [µmol m-2 s-1]":
+            clow = "spar [umol m-2 s-1]"
         if clow in CTDFixedCol:
-            Target=CTDFixedCol[clow]
+            target = CTDFixedCol[clow]
         else:
             # print (clow)
-            ExtramesID += 1
-            Target ='extrames%02d'%ExtramesID
-            ExtraMapping['%02d'%ExtramesID]=c
-            if ExtramesID>20:
+            extrames_id += 1
+            target = 'extrames%02d' % extrames_id
+            extra_mapping['%02d' % extrames_id] = c
+            if extrames_id > 20:
                 raise Exception("ImportCTD: Too much CTD data, column %s skipped" % c)
-        Mapping.append(Target)
-    app.logger.info("Mapping = %s",Mapping)
-    database.ExecSQL("delete from part_ctd where psampleid=%s"%psampleid)
-    for i,r in enumerate(Rdr):
-        cl=partdatabase.part_ctd()
-        cl.psampleid=psampleid
-        cl.lineno=i
-        for j,c in enumerate(Mapping):
-            v=CleanValue(r[j])
-            if v!='':
-                if c=='qc_flag':
+        mapping.append(target)
+    app.logger.info("mapping = %s", mapping)
+    database.ExecSQL("delete from part_ctd where psampleid=%s" % psampleid)
+    for i, r in enumerate(rdr):
+        cl = partdatabase.part_ctd()
+        cl.psampleid = psampleid
+        cl.lineno = i
+        for j, c in enumerate(mapping):
+            v = CleanValue(r[j])
+            if v != '':
+                if c == 'qc_flag':
                     setattr(cl, c, int(float(v)))
-                elif c=='datetime':
-                    setattr(cl, c, datetime.datetime(int(v[0:4]),int(v[4:6]),int(v[6:8]),int(v[8:10]),int(v[10:12]),int(v[12:14]),int(v[14:17])*1000))
+                elif c == 'datetime':
+                    setattr(cl, c, datetime.datetime(int(v[0:4]), int(v[4:6]), int(v[6:8]), int(v[8:10]), int(v[10:12]),
+                                                     int(v[12:14]), int(v[14:17]) * 1000))
                 else:
-                    setattr(cl,c,v)
+                    setattr(cl, c, v)
         db.session.add(cl)
         db.session.commit()
-    UvpSample.ctd_desc=EncodeEqualList(ExtraMapping)
-    UvpSample.ctd_import_datetime=datetime.datetime.now()
-    UvpSample.ctd_import_name=user_name
-    UvpSample.ctd_import_email = user_email
+    uvp_sample.ctd_desc = EncodeEqualList(extra_mapping)
+    uvp_sample.ctd_import_datetime = datetime.datetime.now()
+    uvp_sample.ctd_import_name = user_name
+    uvp_sample.ctd_import_email = user_email
     db.session.commit()
     return True
 
 
-def GetPathForRawHistoFile(psampleid,flash='1'):
-    VaultFolder = "partraw%04d" % (psampleid // 10000)
+def GetPathForRawHistoFile(psampleid, flash='1'):
+    vault_folder = "partraw%04d" % (psampleid // 10000)
     vaultroot = Path(VaultRootDir)
     # creation du repertoire contenant les histogramme brut si necessaire
-    CreateDirConcurrentlyIfNeeded(vaultroot / VaultFolder)
+    CreateDirConcurrentlyIfNeeded(vaultroot / vault_folder)
     # si flash est à 0 on ajoute .black dans le nom du fichier
-    return (vaultroot /VaultFolder/("%04d%s.tsv.bz2" %(psampleid % 10000,'.black' if flash=='0' else ''))).as_posix()
+    return (vaultroot / vault_folder / (
+            "%04d%s.tsv.bz2" % (psampleid % 10000, '.black' if flash == '0' else ''))).as_posix()
