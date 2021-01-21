@@ -1,29 +1,40 @@
+import os
+import ssl
+import urllib.request
 from ftplib import FTP
-from appli.part.common_sample_import import GetPathForRawHistoFile
-import appli.part.database as partdatabase, logging,re,datetime,csv,tempfile,shutil,zipfile
-from appli import db, database , ntcv
-from appli.part.common_sample_import import ToFloat,GenerateReducedParticleHistogram
-import numpy as np,io
 from html.parser import HTMLParser
-import urllib.request,ssl,os
+import io
+import numpy as np
+import appli.part.database as partdatabase
+import csv
+import datetime
+import logging
+import re
+import shutil
+import tempfile
+import zipfile
+from appli import db, database, ntcv
+from appli.part.common_sample_import import GetPathForRawHistoFile
+from appli.part.common_sample_import import ToFloat, GenerateReducedParticleHistogram
+
 
 class ATagParser(HTMLParser):
     def __init__(self):
         super().__init__()
-        self.FoundA=[]
+        self.FoundA = []
 
     def handle_starttag(self, tag, attrs):
-        if tag!='a':
+        if tag != 'a':
             return
-        attr_dict=dict(attrs)
+        attr_dict = dict(attrs)
         if 'href' not in attr_dict:
-             return
-        href=attr_dict['href']
+            return
+        href = attr_dict['href']
         if ':' in href:
-            return # on ignore les url qui respécifient un protocole
+            return  # on ignore les url qui respécifient un protocole
         if not href.endswith('.txt'):
-            return # on ne garde que les .txt
-        fichier=os.path.basename(href)
+            return  # on ne garde que les .txt
+        fichier = os.path.basename(href)
         self.FoundA.append(fichier)
 
     def error(self, message):
@@ -31,41 +42,41 @@ class ATagParser(HTMLParser):
 
 
 def ParseMetadataFile(MetaF):
-    MetaData = {}
-    for l in MetaF:
-        cols = l.strip().split('\t')
+    meta_data = {}
+    for line in MetaF:
+        cols = line.strip().split('\t')
         if len(cols) == 2:
-            MetaData[cols[0].lower()] = cols[1]
-    return MetaData
+            meta_data[cols[0].lower()] = cols[1]
+    return meta_data
 
 
 class RemoteServerFetcher:
-    def __init__(self, pprojid:int):
+    def __init__(self, pprojid: int):
         self.Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=pprojid).first()
-        self.ftp=None
+        self.ftp = None
 
     def Connect(self):
         self.ftp = FTP(host=self.Prj.remote_url, user=self.Prj.remote_user, passwd=self.Prj.remote_password, timeout=10)
-        if ntcv(self.Prj.remote_directory)!="":
+        if ntcv(self.Prj.remote_directory) != "":
             self.ftp.cwd(self.Prj.remote_directory)
 
     def IsHttp(self):
-        return self.Prj.remote_url.startswith('http:') or  self.Prj.remote_url.startswith('https:')
+        return self.Prj.remote_url.startswith('http:') or self.Prj.remote_url.startswith('https:')
 
-    def GetHTTPUrl(self,Filename=''):
-        url=self.Prj.remote_url
+    def GetHTTPUrl(self, Filename=''):
+        url = self.Prj.remote_url
         if (not url.endswith('/')) and (not self.Prj.remote_directory.startswith('/')):
-            url+='/'
-        url +=self.Prj.remote_directory
+            url += '/'
+        url += self.Prj.remote_directory
         if not url.endswith('/'):
-            url+='/'
+            url += '/'
         url += Filename
         return url
 
-    def RetrieveFile(self,FileName,TempFile):
+    def RetrieveFile(self, FileName, TempFile):
         if self.IsHttp():
-            ContexteSSLSansControle = ssl.SSLContext()
-            with urllib.request.urlopen(self.GetHTTPUrl(FileName), context=ContexteSSLSansControle) as response:
+            contexte_ssl_sans_controle = ssl.SSLContext()
+            with urllib.request.urlopen(self.GetHTTPUrl(FileName), context=contexte_ssl_sans_controle) as response:
                 html = response.read()
                 TempFile.write(html)
         else:
@@ -76,7 +87,8 @@ class RemoteServerFetcher:
         clé : N° de sample value=> sampletype,files[filetype]:filename
         Exemple :
         {'SG003B': {'sampletype': 'TIME',
-            'files': {'META': 'SG003B_000002LP_TIME_META.txt', 'LPM': 'SG003B_000002LP_TIME_LPM.txt', 'BLACK': 'SG003B_000002LP_TIME_BLACK.txt'}
+            'files': {'META': 'SG003B_000002LP_TIME_META.txt', 'LPM': 'SG003B_000002LP_TIME_LPM.txt'
+                                        , 'BLACK': 'SG003B_000002LP_TIME_BLACK.txt'}
              },
         'SG003A': {'sampletype': 'DEPTH',
             'files': {'TAXO2': 'SG003A_000002LP_DEPTH_TAXO2.txt', 'META': 'SG003A_000002LP_DEPTH_META.txt'
@@ -84,307 +96,318 @@ class RemoteServerFetcher:
                     , 'BLACK': 'SG003A_000002LP_DEPTH_BLACK.txt'} }}
 """
         if self.IsHttp():
-            lst=self.GetServerFilelistHTTP()
+            lst = self.GetServerFilelistHTTP()
         else:
-            lst=self.GetServerFilelistFTP()
-        Samples={}
+            lst = self.GetServerFilelistFTP()
+        samples = {}
         for entry in lst:
             if entry[-4:] != '.txt':  # premier filtrage basique et silencieux
                 continue
             m = re.fullmatch(r"([^_]+)_([^_]+)_([^_]+)_([^_]+)\.txt", entry)
             if m is None:
-                logging.warning("Particule RemoteServerFetcher.GetServerFiles Skip malformed file "+entry)
+                logging.warning("Particule RemoteServerFetcher.GetServerFiles Skip malformed file " + entry)
                 continue
-            SampleName=m.group(1)
-            if SampleName not in Samples:
-                Samples[SampleName]={'sampletype':m.group(3),'files':{}}
-            Samples[SampleName]['files'][m.group(4)]=entry
+            sample_name = m.group(1)
+            if sample_name not in samples:
+                samples[sample_name] = {'sampletype': m.group(3), 'files': {}}
+            samples[sample_name]['files'][m.group(4)] = entry
             # print(entry, m.group(1), m.group(2), m.group(3), m.group(4))
-        return Samples
-
+        return samples
 
     def GetServerFilelistHTTP(self):
-        ContexteSSLSansControle = ssl.SSLContext()
-        url=self.GetHTTPUrl()
-        Req = urllib.request.Request(url)
-        with urllib.request.urlopen(Req, context=ContexteSSLSansControle) as response:
+        contexte_ssl_sans_controle = ssl.SSLContext()
+        url = self.GetHTTPUrl()
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, context=contexte_ssl_sans_controle) as response:
             html = response.read().decode('latin-1')
             parser = ATagParser()
             parser.feed(html)
             return parser.FoundA
-
 
     def GetServerFilelistFTP(self):
         if self.ftp is None:
             self.Connect()
         return list(self.ftp.nlst())
 
-
-    def FetchServerDataForProject(self,ForcedSample:list):
-        if self.Prj.remote_type=='TSV LOV':
+    def FetchServerDataForProject(self, ForcedSample: list):
+        if self.Prj.remote_type == 'TSV LOV':
             return self.FetchServerDataForProjectLamda(ForcedSample)
 
-    def FetchServerDataForProjectLamda(self, ForcedSample: list):
+    def FetchServerDataForProjectLamda(self, forced_sample: list):
         """
         Recupère les données d'un serveur lamba et les charge
-        :param ForcedSample: Permet de forcer une liste de samplename pour ne traiter que ceux là et forcer leur rechargement même s'il existent déjà
+        :param forced_sample: Permet de forcer une liste de samplename pour ne traiter que ceux là et forcer leur
+                rechargement même s'il existent déjà
         :return Liste des sampleid
         """
-        returnedsampleid=[]
-        ServerSamples=self.GetServerFiles()
-        DBSamples=db.session.query(partdatabase.part_samples).filter_by(pprojid=self.Prj.pprojid)
-        DBSamplesNames={s.profileid:s for s in DBSamples}
-        if len(ForcedSample)==0:
-            ForcedSample=None
-        TmpDir=None
-        for SampleName in ServerSamples:
-            if ForcedSample: # on restreint la liste de ce qu'on traite
-                if SampleName not in ForcedSample:
+        returnedsampleid = []
+        server_samples = self.GetServerFiles()
+        db_samples = db.session.query(partdatabase.part_samples).filter_by(pprojid=self.Prj.pprojid)
+        db_samples_names = {s.profileid: s for s in db_samples}
+        if len(forced_sample) == 0:
+            forced_sample = None
+        tmp_dir = None
+        for SampleName in server_samples:
+            if forced_sample:  # on restreint la liste de ce qu'on traite
+                if SampleName not in forced_sample:
                     continue
-            Sample=None
-            if SampleName in DBSamplesNames: # Sample existe déjà
-                if ForcedSample and SampleName in ForcedSample: # mais on souhaite reforce son chargement
-                    Sample=DBSamplesNames[SampleName]
+            sample = None
+            if SampleName in db_samples_names:  # Sample existe déjà
+                if forced_sample and SampleName in forced_sample:  # mais on souhaite reforce son chargement
+                    sample = db_samples_names[SampleName]
                 else:
-                    continue # existe déjà sans souhait de reforcer son chargement, on saute
-            if 'META' not in ServerSamples[SampleName]['files'] or 'LPM' not in ServerSamples[SampleName]['files']:
-                logging.warning("Particule RemoteServerFetcher.GetServerFiles skip processing : META and LPM are required to handle sample "
-                                + SampleName)
+                    continue  # existe déjà sans souhait de reforcer son chargement, on saute
+            if 'META' not in server_samples[SampleName]['files'] or 'LPM' not in server_samples[SampleName]['files']:
+                logging.warning("Particule RemoteServerFetcher.GetServerFiles skip processing : META and LPM are "
+                                "required to handle sample " + SampleName)
                 continue
-            print("Processing sample ",SampleName)
-            if Sample is None:
-                Sample=partdatabase.part_samples()
-                db.session.add(Sample)
-            TmpDir=tempfile.mkdtemp()
-            with zipfile.ZipFile(TmpDir+'/raw.zip', 'w',compression=zipfile.ZIP_DEFLATED) as zf:
-                for filetype in ServerSamples[SampleName]['files']:
-                    with open(TmpDir+"/"+filetype,"wb") as TmpF:
-                        self.RetrieveFile(ServerSamples[SampleName]['files'][filetype], TmpF)
-                    zf.write(TmpF.name, arcname=filetype+'.txt')
-            with open(TmpDir+"/META", 'r') as MetaF:
-                MetaData=ParseMetadataFile(MetaF)
+            print("Processing sample ", SampleName)
+            if sample is None:
+                sample = partdatabase.part_samples()
+                db.session.add(sample)
+            tmp_dir = tempfile.mkdtemp()
+            with zipfile.ZipFile(tmp_dir + '/raw.zip', 'w', compression=zipfile.ZIP_DEFLATED) as zf:
+                for filetype in server_samples[SampleName]['files']:
+                    with open(tmp_dir + "/" + filetype, "wb") as TmpF:
+                        self.RetrieveFile(server_samples[SampleName]['files'][filetype], TmpF)
+                    zf.write(TmpF.name, arcname=filetype + '.txt')
+            with open(tmp_dir + "/META", 'r') as MetaF:
+                meta_data = ParseMetadataFile(MetaF)
 
-            Sample.pprojid=self.Prj.pprojid
-            Sample.profileid=SampleName
-            Sample.filename=ServerSamples[SampleName]['files']['LPM']
-            if 'CTD' in ServerSamples[SampleName]['files']:
-                Sample.ctd_origfilename=ServerSamples[SampleName]['files']['CTD']
-            Sample.instrumsn=MetaData.get('camera_ref','')
-            Sample.acq_aa=MetaData.get('aa','')
-            Sample.acq_exp=MetaData.get('exp','')
-            Sample.acq_pixel=MetaData.get('pixel_size','')
-            Sample.acq_volimage=MetaData.get('image_volume','')
-            Sample.acq_gain=MetaData.get('gain','')
-            Sample.acq_threshold=MetaData.get('threshold','')
-            Sample.acq_shutterspeed=MetaData.get('shutter','')
-            Sample.instrumsn=MetaData.get('camera_ref','')
+            sample.pprojid = self.Prj.pprojid
+            sample.profileid = SampleName
+            sample.filename = server_samples[SampleName]['files']['LPM']
+            if 'CTD' in server_samples[SampleName]['files']:
+                sample.ctd_origfilename = server_samples[SampleName]['files']['CTD']
+            sample.instrumsn = meta_data.get('camera_ref', '')
+            sample.acq_aa = meta_data.get('aa', '')
+            sample.acq_exp = meta_data.get('exp', '')
+            sample.acq_pixel = meta_data.get('pixel_size', '')
+            sample.acq_volimage = meta_data.get('image_volume', '')
+            sample.acq_gain = meta_data.get('gain', '')
+            sample.acq_threshold = meta_data.get('threshold', '')
+            sample.acq_shutterspeed = meta_data.get('shutter', '')
+            sample.instrumsn = meta_data.get('camera_ref', '')
             # Sample.op_sample_email=MetaData.get('operator_email','')
-            Sample.histobrutavailable=True
-            Sample.organizedbydeepth= ServerSamples[SampleName]['sampletype']=='DEPTH'
-            if MetaData.get('pressure_offset','')!='':
-                Sample.acq_depthoffset= ToFloat(MetaData.get('pressure_offset', ''))
+            sample.histobrutavailable = True
+            sample.organizedbydeepth = server_samples[SampleName]['sampletype'] == 'DEPTH'
+            if meta_data.get('pressure_offset', '') != '':
+                sample.acq_depthoffset = ToFloat(meta_data.get('pressure_offset', ''))
 
             # Lat,Long et Date sont les moyennes du fichier LPM
             # noinspection PyTypeChecker
-            SamplesData=np.genfromtxt(TmpDir+"/LPM",names=True,delimiter='\t',autostrip=True
-                                      ,usecols=['DATE_TIME','LATITUDE_decimal_degree','LONGITUDE_decimal_degree']
-                                      #,usecols=[0,2,3]
-                                      , dtype=[ ('DATE_TIME', 'S15'),('LATITUDE_decimal_degree','<f4'),('LONGITUDE_decimal_degree','<f4')])
-            if len(SamplesData.shape) == 0: # s'il n'y a qu'une seul ligne genfromtxt ne retourne pas un tableau à 2 dimensions, donc ou transforme celui ci
-                SamplesData = np.array([SamplesData])
-            Sample.latitude= round(np.average(SamplesData['LATITUDE_decimal_degree'] + 360) - 360, 3)
-            Sample.longitude =round(np.average(SamplesData['LONGITUDE_decimal_degree'] + 360) - 360, 3)
-            FirstDate=datetime.datetime.strptime(SamplesData['DATE_TIME'][0].decode(), '%Y%m%dT%H%M%S')
-            LastDate=datetime.datetime.strptime(SamplesData['DATE_TIME'][SamplesData.shape[0] - 1].decode(), '%Y%m%dT%H%M%S')
-            Sample.sampledate=datetime.datetime.fromtimestamp(int((FirstDate.timestamp() + LastDate.timestamp()) / 2))
-
+            samples_data = np.genfromtxt(tmp_dir + "/LPM", names=True, delimiter='\t', autostrip=True,
+                                         usecols=['DATE_TIME', 'LATITUDE_decimal_degree', 'LONGITUDE_decimal_degree'],
+                                         # ,usecols=[0,2,3]
+                                         dtype=[('DATE_TIME', 'S15'), ('LATITUDE_decimal_degree', '<f4'),
+                                                ('LONGITUDE_decimal_degree', '<f4')])
+            # s'il n'y a qu'une seule ligne genfromtxt ne retourne pas un tableau à 2 dimensions
+            # , donc on transforme celui ci en tableau 2D
+            if len(samples_data.shape) == 0:
+                samples_data = np.array([samples_data])
+            sample.latitude = round(np.average(samples_data['LATITUDE_decimal_degree'] + 360) - 360, 3)
+            sample.longitude = round(np.average(samples_data['LONGITUDE_decimal_degree'] + 360) - 360, 3)
+            first_date = datetime.datetime.strptime(samples_data['DATE_TIME'][0].decode(), '%Y%m%dT%H%M%S')
+            last_date = datetime.datetime.strptime(samples_data['DATE_TIME'][samples_data.shape[0] - 1].decode(),
+                                                   '%Y%m%dT%H%M%S')
+            sample.sampledate = datetime.datetime.fromtimestamp(int((first_date.timestamp() + last_date.timestamp())
+                                                                    / 2))
 
             db.session.commit()
-            returnedsampleid.append(Sample.psampleid)
-            rawfileinvault = GetPathForRawHistoFile(Sample.psampleid)
-            shutil.copyfile(TmpDir+'/raw.zip', rawfileinvault)
+            returnedsampleid.append(sample.psampleid)
+            rawfileinvault = GetPathForRawHistoFile(sample.psampleid)
+            shutil.copyfile(tmp_dir + '/raw.zip', rawfileinvault)
             # shutil.copyfile(MetaF.name, "c:/temp/testmeta.txt")
             # shutil.copyfile(TmpDir+'/raw.zip', "c:/temp/testremote.zip")
-        if TmpDir:
-            shutil.rmtree(TmpDir)
+        if tmp_dir:
+            shutil.rmtree(tmp_dir)
         return returnedsampleid
 
 
-def GenerateParticleHistogram(psampleid:int):
+def GenerateParticleHistogram(psampleid: int):
     """
     Génération de l'histogramme particulaire détaillé (45 classes) et réduit (15 classes) à partir du fichier ASC
     :param psampleid:
     :return:
     """
-    PartSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
-    if PartSample is None:
-        raise Exception("GenerateRawHistogram: Sample %d missing"%psampleid)
-    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=PartSample.pprojid).first()
-    rawfileinvault = GetPathForRawHistoFile(PartSample.psampleid)
-    DepthOffset = Prj.default_depthoffset
-    if DepthOffset is None:
-        DepthOffset=PartSample.acq_depthoffset
-    if DepthOffset is None:
-        DepthOffset=0
+    part_sample = db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
+    if part_sample is None:
+        raise Exception("GenerateRawHistogram: Sample %d missing" % psampleid)
+    prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=part_sample.pprojid).first()
+    rawfileinvault = GetPathForRawHistoFile(part_sample.psampleid)
+    depth_offset = prj.default_depthoffset
+    if depth_offset is None:
+        depth_offset = part_sample.acq_depthoffset
+    if depth_offset is None:
+        depth_offset = 0
 
-    with zipfile.ZipFile(rawfileinvault,"r") as zf:
-        with zf.open('LPM.txt','r') as flpmb:
-            flpm=io.TextIOWrapper(flpmb,encoding='latin_1')
-            csvfile=csv.DictReader(flpm, delimiter='\t')
-            NbrLine = 0
-            HistoByTranche={}
+    with zipfile.ZipFile(rawfileinvault, "r") as zf:
+        with zf.open('LPM.txt', 'r') as flpmb:
+            flpm = io.TextIOWrapper(flpmb, encoding='latin_1')
+            csvfile = csv.DictReader(flpm, delimiter='\t')
+            nbr_line = 0
+            histo_by_tranche = {}
             for L in csvfile:
-                NbrLine += 1
-                Depth=float(L['PRES_decibar'])+DepthOffset
-                Time = L['DATE_TIME']
-                if PartSample.organizedbydeepth:
-                    Tranche=(Depth//5)*5
-                    DepthTranche=Tranche+2.5
-                    dateheure = datetime.datetime.strptime(Time, "%Y%m%dT%H%M%S")
+                nbr_line += 1
+                depth = float(L['PRES_decibar']) + depth_offset
+                time = L['DATE_TIME']
+                if part_sample.organizedbydeepth:
+                    tranche = (depth // 5) * 5
+                    depth_tranche = tranche + 2.5
+                    dateheure = datetime.datetime.strptime(time, "%Y%m%dT%H%M%S")
                 else:
-                    Tranche=Time[:-4] # On enlève minute et secondes
-                    DepthTranche =Depth # on prend la premiere profondeur
-                    dateheure=None
-                NbrParClasse={}
+                    tranche = time[:-4]  # On enlève minute et secondes
+                    depth_tranche = depth  # on prend la premiere profondeur
+                    dateheure = None
+                nbr_par_classe = {}
                 # GreyParClasse = {}
-                NbrImg=float(L['IMAGE_NUMBER_PARTICLES'])
+                nbr_img = float(L['IMAGE_NUMBER_PARTICLES'])
                 for classe in range(18):
-                    NbrParClasse[classe]= round(ToFloat(L['NB_SIZE_SPECTRA_PARTICLES_class_%s'%(classe+1,)])*NbrImg)
-                if Tranche not in HistoByTranche:
-                    HistoByTranche[Tranche]={'NbrImg':0,'NbrParClasse':NbrParClasse,'DepthTranche':DepthTranche,'timestamp':0}
+                    nbr_par_classe[classe] = round(
+                        ToFloat(L['NB_SIZE_SPECTRA_PARTICLES_class_%s' % (classe + 1,)]) * nbr_img)
+                if tranche not in histo_by_tranche:
+                    histo_by_tranche[tranche] = {'NbrImg': 0, 'NbrParClasse': nbr_par_classe,
+                                                 'DepthTranche': depth_tranche, 'timestamp': 0}
                 else:
                     for classe in range(18):
-                        HistoByTranche[Tranche]['NbrParClasse'][classe] += NbrParClasse[classe]
-                HistoByTranche[Tranche]['NbrImg'] += NbrImg
+                        histo_by_tranche[tranche]['NbrParClasse'][classe] += nbr_par_classe[classe]
+                histo_by_tranche[tranche]['NbrImg'] += nbr_img
                 if dateheure:
-                    HistoByTranche[Tranche]['timestamp'] += dateheure.timestamp()*NbrImg  # on va calculer l'heure moyenne, donc on fait la somme
-            logging.info("Line count %d" % NbrLine)
+                    # on va calculer l'heure moyenne, donc on fait la somme
+                    histo_by_tranche[tranche]['timestamp'] += dateheure.timestamp() * nbr_img
+            logging.info("Line count %d" % nbr_line)
 
-
-            database.ExecSQL("delete from part_histopart_det where psampleid="+str(psampleid))
-            sql="""insert into part_histopart_det(psampleid, lineno, depth,  watervolume,datetime
-                , class17, class18, class19, class20, class21, class22, class23, class24, class25, class26, class27, class28, class29
-                , class30, class31, class32, class33, class34)
-            values(%(psampleid)s,%(lineno)s,%(depth)s,%(watervolume)s,%(datetime)s,%(class17)s,%(class18)s,%(class19)s,%(class20)s,%(class21)s,%(class22)s
-            ,%(class23)s,%(class24)s,%(class25)s,%(class26)s,%(class27)s,%(class28)s
-            ,%(class29)s,%(class30)s,%(class31)s,%(class32)s,%(class33)s,%(class34)s)"""
-            sqlparam={'psampleid':psampleid}
-            Tranches=sorted(HistoByTranche.keys())
-            for i,Tranche in enumerate(Tranches):
-                sqlparam['lineno']=i
-                sqlparam['depth'] = round(HistoByTranche[Tranche]['DepthTranche'],2)
-                sqlparam['watervolume'] =round(HistoByTranche[Tranche]['NbrImg']*PartSample.acq_volimage,3)
-                if PartSample.organizedbydeepth:
-                    sqlparam['datetime']=None
-                    if HistoByTranche[Tranche]['timestamp']:
-                        ts=round(HistoByTranche[Tranche]['timestamp']/HistoByTranche[Tranche]['NbrImg'],1)
-                        sqlparam['datetime']=datetime.datetime.fromtimestamp(ts)
+            database.ExecSQL("delete from part_histopart_det where psampleid=" + str(psampleid))
+            sql = """insert into part_histopart_det(psampleid, lineno, depth,  watervolume,datetime
+                , class17, class18, class19, class20, class21, class22, class23, class24, class25, class26, class27
+                , class28, class29, class30, class31, class32, class33, class34)
+            values(%(psampleid)s,%(lineno)s,%(depth)s,%(watervolume)s,%(datetime)s,%(class17)s,%(class18)s,%(class19)s
+            ,%(class20)s,%(class21)s,%(class22)s,%(class23)s,%(class24)s,%(class25)s,%(class26)s,%(class27)s
+            ,%(class28)s,%(class29)s,%(class30)s,%(class31)s,%(class32)s,%(class33)s,%(class34)s)"""
+            sqlparam = {'psampleid': psampleid}
+            tranches = sorted(histo_by_tranche.keys())
+            for i, tranche in enumerate(tranches):
+                sqlparam['lineno'] = i
+                sqlparam['depth'] = round(histo_by_tranche[tranche]['DepthTranche'], 2)
+                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage, 3)
+                if part_sample.organizedbydeepth:
+                    sqlparam['datetime'] = None
+                    if histo_by_tranche[tranche]['timestamp']:
+                        ts = round(histo_by_tranche[tranche]['timestamp'] / histo_by_tranche[tranche]['NbrImg'], 1)
+                        sqlparam['datetime'] = datetime.datetime.fromtimestamp(ts)
                 else:
-                    sqlparam['datetime'] = datetime.datetime.strptime(Tranche+'3000', "%Y%m%dT%H%M%S") # on insère avec l'heure à 30minutes
-
+                    # on insère avec l'heure à 30minutes
+                    sqlparam['datetime'] = datetime.datetime.strptime(tranche + '3000', "%Y%m%dT%H%M%S")
 
                 for classe in range(18):
-                    sqlparam['class%02d'%(17+classe)] = HistoByTranche[Tranche]['NbrParClasse'][classe]
-                database.ExecSQL(sql,sqlparam)
+                    sqlparam['class%02d' % (17 + classe)] = histo_by_tranche[tranche]['NbrParClasse'][classe]
+                database.ExecSQL(sql, sqlparam)
     GenerateReducedParticleHistogram(psampleid)
 
-def GenerateTaxonomyHistogram(psampleid:int):
+
+def GenerateTaxonomyHistogram(psampleid: int):
     """
     Génération de l'histogramme Taxonomique
     :param psampleid:
     :return:
     """
-    PartSample= db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
-    if PartSample is None:
-        raise Exception("GenerateTaxonomyHistogram: Sample %d missing"%psampleid)
-    Prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=PartSample.pprojid).first()
+    part_sample = db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
+    if part_sample is None:
+        raise Exception("GenerateTaxonomyHistogram: Sample %d missing" % psampleid)
+    prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=part_sample.pprojid).first()
     database.ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
     database.ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
-    rawfileinvault = GetPathForRawHistoFile(PartSample.psampleid)
-    DepthOffset = Prj.default_depthoffset
-    if DepthOffset is None:
-        DepthOffset=PartSample.acq_depthoffset
-    if DepthOffset is None:
-        DepthOffset=0
-    with zipfile.ZipFile(rawfileinvault,"r") as zf:
+    rawfileinvault = GetPathForRawHistoFile(part_sample.psampleid)
+    depth_offset = prj.default_depthoffset
+    if depth_offset is None:
+        depth_offset = part_sample.acq_depthoffset
+    if depth_offset is None:
+        depth_offset = 0
+    with zipfile.ZipFile(rawfileinvault, "r") as zf:
         with zf.open("META.txt", 'r') as MetaFb:
-            MetaF = io.TextIOWrapper(MetaFb,encoding='latin_1')
-            MetaData = ParseMetadataFile(MetaF)
-            TaxoIds=list(range(40))
+            meta_f = io.TextIOWrapper(MetaFb, encoding='latin_1')
+            meta_data = ParseMetadataFile(meta_f)
+            taxo_ids = list(range(40))
             for i in range(40):
                 try:
-                    TaxoIds[i]=int(MetaData.get('category_name_%d'%(i+1),''))
+                    taxo_ids[i] = int(meta_data.get('category_name_%d' % (i + 1), ''))
                 except:
-                    TaxoIds[i]=0
-            InClause=','.join([str(x) for x in TaxoIds if x>0])
-            if InClause=='':
+                    taxo_ids[i] = 0
+            in_clause = ','.join([str(x) for x in taxo_ids if x > 0])
+            if in_clause == '':
                 raise Exception("GenerateTaxonomyHistogram: Sample %d no valid category_name_" % psampleid)
-            TaxoDB=[int(x['id']) for x in database.GetAll("select id from taxonomy where id in(%s)"%(InClause,))]
+            taxo_db = [int(x['id']) for x in database.GetAll("select id from taxonomy where id in(%s)" % (in_clause,))]
             for i in range(40):
-                if TaxoIds[i]>0:
-                    if TaxoIds[i] not in TaxoDB:
-                        raise Exception("GenerateTaxonomyHistogram: Sample %d category_name_%d is not a vlid taxoid" % (psampleid,(i+1)))
+                if taxo_ids[i] > 0:
+                    if taxo_ids[i] not in taxo_db:
+                        raise Exception("GenerateTaxonomyHistogram: Sample %d category_name_%d is not a vlid taxoid" % (
+                            psampleid, (i + 1)))
 
         if 'taxo2.txt' not in [f.filename.lower() for f in zf.filelist]:
             return
-        with zf.open('TAXO2.txt','r') as ftaxob:
-            ftaxo=io.TextIOWrapper(ftaxob,encoding='latin_1')
-            csvfile=csv.DictReader(ftaxo, delimiter='\t')
-            NbrLine = 0
-            HistoByTranche={}
+        with zf.open('TAXO2.txt', 'r') as ftaxob:
+            ftaxo = io.TextIOWrapper(ftaxob, encoding='latin_1')
+            csvfile = csv.DictReader(ftaxo, delimiter='\t')
+            nbr_line = 0
+            histo_by_tranche = {}
             for L in csvfile:
-                if L['PRES_decibar']=='': # ligne vide
+                if L['PRES_decibar'] == '':  # ligne vide
                     continue
-                NbrLine += 1
-                Depth=float(L['PRES_decibar'])+DepthOffset
-                Time = L['DATE_TIME']
-                if PartSample.organizedbydeepth:
-                    Tranche=(Depth//5)*5
-                    DepthTranche=Tranche+2.5
+                nbr_line += 1
+                depth = float(L['PRES_decibar']) + depth_offset
+                time = L['DATE_TIME']
+                if part_sample.organizedbydeepth:
+                    tranche = (depth // 5) * 5
+                    depth_tranche = tranche + 2.5
                 else:
-                    Tranche=Time[:-4] # On enlève Heure et minute
-                    DepthTranche =Depth # on prend la premiere profondeur
-                NbrParClasse={}
-                SizeParClasse = {}
-                NbrImg=float(L['IMAGE_NUMBER_PLANKTON'])
+                    tranche = time[:-4]  # On enlève Heure et minute
+                    depth_tranche = depth  # on prend la premiere profondeur
+                nbr_par_classe = {}
+                size_par_classe = {}
+                nbr_img = float(L['IMAGE_NUMBER_PLANKTON'])
                 for classe in range(40):
-                    NbrParClasse[classe]=ToFloat(L['NB_PLANKTON_cat_%s'%(classe+1,)]) or 0.0
-                    SizeParClasse[classe]=ToFloat(L['SIZE_PLANKTON_cat_%s'%(classe+1,)]) or 0.0
-                    SizeParClasse[classe] =NbrParClasse[classe]*SizeParClasse[classe] if SizeParClasse[classe] else 0
-                if Tranche not in HistoByTranche:
-                    HistoByTranche[Tranche]={'NbrImg':NbrImg,'NbrParClasse':NbrParClasse,'DepthTranche':DepthTranche
-                        ,'SizeParClasse':SizeParClasse }
+                    nbr_par_classe[classe] = ToFloat(L['NB_PLANKTON_cat_%s' % (classe + 1,)]) or 0.0
+                    size_par_classe[classe] = ToFloat(L['SIZE_PLANKTON_cat_%s' % (classe + 1,)]) or 0.0
+                    size_par_classe[classe] = nbr_par_classe[classe] * size_par_classe[classe] \
+                        if size_par_classe[classe] else 0
+                if tranche not in histo_by_tranche:
+                    histo_by_tranche[tranche] = {'NbrImg': nbr_img, 'NbrParClasse': nbr_par_classe,
+                                                 'DepthTranche': depth_tranche,
+                                                 'SizeParClasse': size_par_classe}
                 else:
-                    HistoByTranche[Tranche]['NbrImg']+= NbrImg
+                    histo_by_tranche[tranche]['NbrImg'] += nbr_img
                     for classe in range(40):
-                        HistoByTranche[Tranche]['NbrParClasse'][classe] += NbrParClasse[classe]
-                        HistoByTranche[Tranche]['SizeParClasse'][classe] += SizeParClasse[classe]
-            for Tranche in HistoByTranche: # fin calcul du niveau de gris moyen pas tranche/classe
+                        histo_by_tranche[tranche]['NbrParClasse'][classe] += nbr_par_classe[classe]
+                        histo_by_tranche[tranche]['SizeParClasse'][classe] += size_par_classe[classe]
+            for tranche in histo_by_tranche:  # fin calcul du niveau de gris moyen pas tranche/classe
                 for classe in range(40):
-                    if HistoByTranche[Tranche]['NbrParClasse'][classe]>0:
-                        HistoByTranche[Tranche]['SizeParClasse'][classe] /= HistoByTranche[Tranche]['NbrParClasse'][classe]
-            logging.info("Line count %d" % NbrLine)
+                    if histo_by_tranche[tranche]['NbrParClasse'][classe] > 0:
+                        histo_by_tranche[tranche]['SizeParClasse'][classe] /= histo_by_tranche[tranche]['NbrParClasse'][
+                            classe]
+            logging.info("Line count %d" % nbr_line)
 
-            sql = """INSERT INTO part_histocat(psampleid, classif_id, lineno, depth, watervolume, nbr, avgesd, totalbiovolume)
-                    VALUES(%(psampleid)s,%(classif_id)s,%(lineno)s,%(depth)s,%(watervolume)s,%(nbr)s,%(avgesd)s,%(totalbiovolume)s)"""
-            sqlparam={'psampleid':psampleid}
-            Tranches=sorted(HistoByTranche.keys())
-            for i,Tranche in enumerate(Tranches):
-                sqlparam['lineno']=i
-                sqlparam['depth'] = HistoByTranche[Tranche]['DepthTranche']
-                sqlparam['watervolume'] =round(HistoByTranche[Tranche]['NbrImg']*PartSample.acq_volimage,3)
+            sql = """INSERT INTO part_histocat(psampleid, classif_id, lineno, depth, watervolume, nbr
+                                , avgesd, totalbiovolume)
+                    VALUES(%(psampleid)s,%(classif_id)s,%(lineno)s,%(depth)s,%(watervolume)s,%(nbr)s
+                                ,%(avgesd)s,%(totalbiovolume)s)"""
+            sqlparam = {'psampleid': psampleid}
+            tranches = sorted(histo_by_tranche.keys())
+            for i, tranche in enumerate(tranches):
+                sqlparam['lineno'] = i
+                sqlparam['depth'] = histo_by_tranche[tranche]['DepthTranche']
+                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage, 3)
                 for classe in range(40):
-                    if TaxoIds[classe]>0 and HistoByTranche[Tranche]['NbrParClasse'][classe]>0:
-                        sqlparam['classif_id'] = TaxoIds[classe]
-                        sqlparam['nbr'] = HistoByTranche[Tranche]['NbrParClasse'][classe]
-                        sqlparam['avgesd'] = HistoByTranche[Tranche]['SizeParClasse'][classe]
-                        sqlparam['totalbiovolume']=None
-                        database.ExecSQL(sql,sqlparam)
+                    if taxo_ids[classe] > 0 and histo_by_tranche[tranche]['NbrParClasse'][classe] > 0:
+                        sqlparam['classif_id'] = taxo_ids[classe]
+                        sqlparam['nbr'] = histo_by_tranche[tranche]['NbrParClasse'][classe]
+                        sqlparam['avgesd'] = histo_by_tranche[tranche]['SizeParClasse'][classe]
+                        sqlparam['totalbiovolume'] = None
+                        database.ExecSQL(sql, sqlparam)
             database.ExecSQL("""insert into part_histocat_lst(psampleid, classif_id) 
             select distinct psampleid,classif_id from part_histocat where psampleid=%s""" % psampleid)
 
 
 if __name__ == "__main__":
-    RSF=RemoteServerFetcher(1)
+    RSF = RemoteServerFetcher(1)
     # print(RSF.GetServerFiles())
     # RSF.FetchServerDataForProject(['SG003A'])
