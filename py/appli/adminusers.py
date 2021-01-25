@@ -123,86 +123,6 @@ class ProjectsViewPrivInlineModelForm(InlineFormAdmin):
         super(ProjectsViewPrivInlineModelForm, self).__init__(database.ProjectsPriv)
 
 
-class ProjectsView(ModelView):
-    # Enable CSRF check
-    form_base_class = SecureForm
-
-    column_list = ('projid', 'title', 'visible', 'status', 'objcount', 'pctvalidated', 'pctclassified')
-    column_searchable_list = ('title',)
-    column_default_sort = 'projid'
-    inline_model_form_converter = ProjectsViewCustomInlineModelConverter
-    inline_models = (ProjectsViewPrivInlineModelForm(),)
-    form_overrides = dict(mappingobj=TextAreaField, mappingsample=TextAreaField, mappingacq=TextAreaField,
-                          mappingprocess=TextAreaField, classiffieldlist=TextAreaField, classifsettings=TextAreaField)
-    form_excluded_columns = ('objcount', 'pctvalidated', 'pctclassified')
-    edit_template = 'admin/projects_edit.html'
-    create_template = 'admin/projects_create.html'
-    form_widget_args = {
-        'title': {'style': 'width: 400px;'}
-    }
-
-    def __init__(self, session, **kwargs):
-        super(ProjectsView, self).__init__(database.Projects, session, **kwargs)
-
-    def is_accessible(self):
-        return current_user.has_role(database.AdministratorLabel)
-
-
-class ProjectsViewLight(ModelView):
-    column_list = ('projid', 'title', 'visible', 'status', 'objcount', 'pctvalidated', 'pctclassified')
-    form_columns = ('title', 'visible', 'status')
-    column_descriptions = {'title': "My title"}
-    column_searchable_list = ('title',)
-    column_default_sort = 'projid'
-    inline_model_form_converter = ProjectsViewCustomInlineModelConverter
-    inline_models = (ProjectsViewPrivInlineModelForm(),)
-    edit_template = 'admin/projects_edit.html'
-    create_template = 'admin/projects_create.html'
-
-    def __init__(self, session, **kwargs):
-        super(ProjectsViewLight, self).__init__(database.Projects, session, **kwargs)
-
-    def is_accessible(self):
-        return current_user.has_role(database.AdministratorLabel)
-
-
-class SamplesView(ModelView):
-    column_list = ('sampleid', 'projid', 'orig_id', 'latitude', 'longitude', 't01', 't02', 't03')
-    column_filters = ('sampleid', 'projid', 'orig_id')
-    column_searchable_list = ('orig_id',)
-    form_overrides = dict(dataportal_descriptor=TextAreaField)
-
-    def __init__(self, session, **kwargs):
-        super(SamplesView, self).__init__(database.Samples, session, **kwargs)
-
-    def is_accessible(self):
-        return current_user.has_role(database.AdministratorLabel)
-
-
-class ProcessView(ModelView):
-    column_list = ('processid', 'projid', 'orig_id', 't01', 't02', 't03')
-    column_filters = ('processid', 'projid', 'orig_id')
-    column_searchable_list = ('orig_id',)
-
-    def __init__(self, session, **kwargs):
-        super(ProcessView, self).__init__(database.Process, session, **kwargs)
-
-    def is_accessible(self):
-        return current_user.has_role(database.AdministratorLabel)
-
-
-class AcquisitionsView(ModelView):
-    column_list = ('acquisid', 'projid', 'orig_id', 't01', 't02', 't03')
-    column_filters = ('acquisid', 'projid', 'orig_id')
-    column_searchable_list = ('orig_id',)
-
-    def __init__(self, session, **kwargs):
-        super(AcquisitionsView, self).__init__(database.Acquisitions, session, **kwargs)
-
-    def is_accessible(self):
-        return current_user.has_role(database.AdministratorLabel)
-
-
 class TaxonomyView(ModelView):
     column_list = ('id', 'parent_id', 'name', 'id_source')
     column_filters = ('id', 'parent_id', 'name', 'id_source')
@@ -218,34 +138,6 @@ class TaxonomyView(ModelView):
         return current_user.has_role(database.AdministratorLabel)
 
 
-class ObjectsView(ModelView):
-    column_list = ('objid', 'projid', 'sampleid', 'classif_qual', 'objdate', 'acquisid', 'processid')
-    column_filters = ('objid', 'projid', 'sampleid', 'classif_qual', 'acquisid', 'processid')
-    form_overrides = dict(complement_info=TextAreaField)
-    form_excluded_columns = ('classif_id', 'classif_auto', 'processrel', 'acquis', 'img0',
-                             'images', 'sample', 'classiffier', 'objfrel')
-    form_ajax_refs = {'classif': {'fields': ('name',)}}
-
-    def __init__(self, session, **kwargs):
-        super(ObjectsView, self).__init__(database.Objects, session, **kwargs)
-
-    def is_accessible(self):
-        return current_user.has_role(database.AdministratorLabel)
-
-
-class ObjectsFieldsView(ModelView):
-    column_list = ('objfid', 'orig_id')
-    column_filters = ('objfid', 'orig_id')
-    column_searchable_list = ('orig_id',)
-    form_excluded_columns = ('objhrel',)
-
-    def __init__(self, session, **kwargs):
-        super(ObjectsFieldsView, self).__init__(database.ObjectsFields, session, **kwargs)
-
-    def is_accessible(self):
-        return current_user.has_role(database.AdministratorLabel)
-
-
 # Create admin
 adminApp = flask_admin.Admin(app, name='Ecotaxa Administration', base_template="admin/base_no_link.html")
 
@@ -254,19 +146,11 @@ adminApp = flask_admin.Admin(app, name='Ecotaxa Administration', base_template="
 adminApp.add_view(UsersView(db.session, name="Users"))
 adminApp.add_view(UsersViewRestricted(db.session, name="users", endpoint="userrest"))
 
-adminApp.add_view(ProjectsViewLight(db.session, endpoint="projectlight", category='Projects'))
-adminApp.add_view(ProjectsView(db.session, name="Projects (Full)", category='Projects'))
-adminApp.add_view(ObjectsView(db.session, category='Objects'))
-adminApp.add_view(ObjectsFieldsView(db.session, category='Objects'))
-adminApp.add_view(SamplesView(db.session, category='Objects'))
-adminApp.add_view(ProcessView(db.session, category='Objects'))
-adminApp.add_view(AcquisitionsView(db.session, category='Objects'))
 adminApp.add_view(TaxonomyView(db.session, category='Taxonomy', name="Edit Taxonomy"))
 
 # adminApp.add_link(base.MenuLink('Import Taxonomy (admin only)', category='Taxonomy',
 # url='/Task/Create/TaskTaxoImport'))
-adminApp.add_link(base.MenuLink('Merge 2 categories (admin only)',
-                                category='Taxonomy', url='/dbadmin/merge2taxon'))
+
 adminApp.add_link(base.MenuLink('Taxonomy errors (admin only)',
                                 category='Taxonomy', url='/dbadmin/viewtaxoerror'))
 adminApp.add_link(base.MenuLink('Ecotaxa Home', url='/'))
@@ -282,11 +166,9 @@ adminApp.add_link(base.MenuLink('Recompute Projects and Taxo stat (can be long)(
 
 
 def GetAdminList():
-    LstUsers = GetAll("""select name||'('||email||')' nom from users u
+    lst_users = GetAll("""select name||'('||email||')' nom from users u
                         join users_roles r on u.id=r.user_id where r.role_id=1""")
-    return ", ".join([r[0] for r in LstUsers])
+    return ", ".join([r[0] for r in lst_users])
 
 
 app.jinja_env.globals.update(GetAdminList=GetAdminList)
-
-# admin.add_view(CategoriesAdmin(Categories, db.session))

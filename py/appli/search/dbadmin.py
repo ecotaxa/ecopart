@@ -143,30 +143,6 @@ def dbadmin_recomputestat():
     return PrintInCharte("Statistics recompute done")
 
 
-@app.route('/dbadmin/merge2taxon')
-@login_required
-@roles_accepted(database.AdministratorLabel)
-def dbadmin_merge2taxon():
-    if gvg("src","")=="" or gvg("dest","")=="":
-        txt="Select source Taxon (will be deleted after merge) :"
-        txt+="<br>Select Target Taxon :"
-        return render_template('search/merge2taxo.html')
-    TaxoSrc=database.Taxonomy.query.filter_by(id=int(gvg("src",""))).first()
-    TaxoDest=database.Taxonomy.query.filter_by(id=int(gvg("dest",""))).first()
-    N1=ExecSQL("update obj_head set classif_id=%(dest)s where  classif_id=%(src)s",{"src":TaxoSrc.id,"dest":TaxoDest.id})
-    N2=ExecSQL("update obj_head set classif_auto_id=%(dest)s where  classif_auto_id=%(src)s",{"src":TaxoSrc.id,"dest":TaxoDest.id})
-    N3=ExecSQL("update objectsclassifhisto set classif_id=%(dest)s where  classif_id=%(src)s",{"src":TaxoSrc.id,"dest":TaxoDest.id})
-    N4=ExecSQL("update taxonomy set parent_id=%(dest)s where  parent_id=%(src)s",{"src":TaxoSrc.id,"dest":TaxoDest.id})
-    N5=ExecSQL("delete from taxonomy where id=%(src)s",{"src":TaxoSrc.id,"dest":TaxoDest.id})
-    return PrintInCharte("""Merge of '%s' in '%s' done
-    <br>%d Objects Manuel classification  updated
-    <br>%d Objects Automatic classification  updated
-    <br>%d Objects classification historical updated
-    <br>%d Taxonomy child updated
-    <br>%d Taxonomy Node deleted
-    """%(TaxoSrc.name,TaxoDest.name,N1,N2,N3,N4,N5))
-
-
 @app.route('/dbadmin/console', methods=['GET', 'POST'])
 @login_required
 @roles_accepted(database.AdministratorLabel)
