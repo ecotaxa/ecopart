@@ -198,8 +198,8 @@ def GlobalTaxoCompute():
                 join part_projects pp on ps.pprojid = pp.pprojid 
                 where ps.sampleid is not null
                 and (
-                      exists (select 1 from obj_head 
-                              where obj_head.sampleid=ps.sampleid and obj_head.classif_when>ps.daterecalculhistotaxo)
+                      exists (select 1 from objects 
+                              where objects.sampleid=ps.sampleid and objects.classif_when>ps.daterecalculhistotaxo)
                 or ps.daterecalculhistotaxo is null 
                 or exists (select 1 from part_histocat_lst hc 
                            where hc.psampleid=ps.psampleid and classif_id not in (select id from taxonomy)) 

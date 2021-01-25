@@ -99,12 +99,7 @@ def before_request_security():
     g.appliadmin=False
     if current_user.has_role(database.AdministratorLabel) or current_user.has_role(database.ProjectCreatorLabel) :
         g.menu.append(("","SEP"))
-        # g.menu.append(("/taxo/browse/","Manage Taxonomy"))
-        if request.endpoint=='indexPrj':
-            g.menu.append(("javascript:PostDynForm('/taxo/browse/?fromprj=%d',{updatestat:'Y'});"%(request.view_args.get('PrjId'),), "Manage Taxonomy"))
-        else:
-            g.menu.append(("javascript:PostDynForm('/taxo/browse/',{updatestat:'Y'});", "Manage Taxonomy"))
-    #     ?fromprj={{ g.Projid }}
+        g.menu.append(("javascript:PostDynForm('/taxo/browse/',{updatestat:'Y'});", "Manage Taxonomy"))
     if current_user.has_role(database.AdministratorLabel) or current_user.has_role(database.UserAdministratorLabel) :
         g.menu.append(("","SEP"))
         g.menu.append(("/admin/","Admin Screen"))
