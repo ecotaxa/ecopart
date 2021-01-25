@@ -62,11 +62,7 @@ $(document).ready(function() {
 <div id="divheadinfo" class="headinfo">
 <div class="headinfo panel panel-default">  <div class="panel-body" style="padding: 1px 5px 1px 5px;">
 <table width="100%"><tr>
-{%  if module=='part' %}
-    <td width="145px"><a href="/part/"><img src="/static/logo_ecopart.png"></a></td>
-{% else %}
-    <td width="140px"><a href="/"><img height="30" src="/static/logo_ecotaxa_24.png" style="margin: 10px 0"></a></td>
-{% endif %}
+<td width="145px"><a href="/part/"><img src="/static/logo_ecopart.png"></a></td>
 
     <td>{{ g.headcenter |safe }}{% block headcenter %}{% endblock %}</td>
     <td align="right" width="300px">
