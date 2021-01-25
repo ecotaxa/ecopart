@@ -48,6 +48,7 @@ class part_projects(db.Model):
         return "{0} ({1})".format(self.ptitle, self.pprojid)
 
 
+# noinspection PyUnresolvedReferences
 Index('is_part_projects_projid', part_projects.__table__.c.projid)
 
 
@@ -138,7 +139,9 @@ class part_samples(db.Model):
         return "{0} ({1})".format(self.profileid, self.psampleid)
 
 
+# noinspection PyUnresolvedReferences
 Index('is_part_samples_sampleid', part_samples.__table__.c.sampleid)
+# noinspection PyUnresolvedReferences
 Index('is_part_samples_prj', part_samples.__table__.c.pprojid)
 
 
