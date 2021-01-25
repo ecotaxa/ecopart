@@ -112,6 +112,9 @@ class RemoteServerFetcher:
                 samples[sample_name] = {'sampletype': m.group(3), 'files': {}}
             samples[sample_name]['files'][m.group(4)] = entry
             # print(entry, m.group(1), m.group(2), m.group(3), m.group(4))
+        for samplename in list(samples.keys()):
+            if 'LPM' not in samples[samplename]['files']:
+                del samples[samplename]
         return samples
 
     def GetServerFilelistHTTP(self):
