@@ -1,6 +1,6 @@
 from os.path import dirname, realpath
 from pathlib import Path
-from appli import app,g,db
+from appli import app,g,db,database
 from appli.part import PartDetClassLimit
 from appli.tasks.importcommon import calcpixelfromesd_aa_exp
 from appli.part.database import part_samples,part_histopart_det,part_projects
@@ -10,8 +10,9 @@ from sqlalchemy.orm.session import make_transient
 
 HERE = Path(dirname(realpath(__file__)))
 
+
 # noinspection DuplicatedCode
-def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="bru"):
+def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,ZooProjectTitle,SamplePrefix,BRUFormat="bru"):
     with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL
         g.db = None
         part_project=db.session.query(part_projects).filter_by(ptitle=SrcProjectTitle).first()
@@ -19,6 +20,7 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="br
         db.session.expunge(part_project)  # expunge the object from session
         make_transient(part_project)
         part_project.pprojid=None
+        part_project.projid = db.session.query(database.Projects).filter_by(title=ZooProjectTitle).first().projid
         part_project.ptitle=TargetProjectTitle
         part_project.rawfolder="qa/data/"+DirName
         db.session.add(part_project)
@@ -40,7 +42,7 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="br
             w.writeheader()
             for S in db.session.query(part_samples).filter_by(pprojid=originalpprojid):
                 filename= S.sampledate.strftime('%Y%m%d%H%M%S')
-                w.writerow({'cruise': "TestCruise","ship":"Testship",'profileid': S.profileid,
+                w.writerow({'cruise': "TestCruise","ship":"Testship",'profileid': SamplePrefix+S.profileid,
                             'filename': filename,
                             'latitude': S.latitude,'longitude': S.longitude,'firstimage':S.firstimage,'endimg':S.lastimg,
                             'aa': S.acq_aa,'exp': S.acq_exp,'volimage': S.acq_volimage,'pixelsize':0.088
@@ -104,7 +106,7 @@ def GenerateUVP5Folder(SrcProjectTitle,TargetProjectTitle, DirName,BRUFormat="br
                     CTDDirPath = FullDirPath / "ctd_data_cnv"
                     if not CTDDirPath.exists():
                         CTDDirPath.mkdir()
-                    CtdFile = CTDDirPath / (S.profileid + ".ctd")
+                    CtdFile = CTDDirPath / (SamplePrefix+S.profileid + ".ctd")
                     shutil.copy(FullDirPath/".."/ ("ctd1.ctd" if S.profileid=='sample02' else "ctd2.ctd"),CtdFile)
 
 

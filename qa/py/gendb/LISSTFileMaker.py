@@ -42,7 +42,7 @@ def GenerateLISSTFolder(SrcProjectTitle,TargetProjectTitle, DirName):
             w.writeheader()
             for S in db.session.query(part_samples).filter_by(pprojid=originalpprojid):
                 filename= S.sampledate.strftime('%Y%m%d%H%M%S')
-                HeaderRow={'cruise': "TestCruise","ship":"Testship",'profileid': S.profileid,
+                HeaderRow={'cruise': "TestCruise","ship":"Testship",'profileid': S.profileid.replace('uvpapp','lisst'),
                             'filename': filename,'kernel':'spherical','zscat_filename':'Myzscat_filename','year':2020,
                             'latitude': S.latitude,'longitude': S.longitude,#'firstimage':S.firstimage,'endimg':S.lastimg,
                             # 'aa': S.acq_aa,'exp': S.acq_exp,'volimage': S.acq_volimage,'pixelsize':0.088,
@@ -72,15 +72,15 @@ def GenerateLISSTFolder(SrcProjectTitle,TargetProjectTitle, DirName):
                                         break
                             PartDatas[ClassLisstMap[classe]]+=NbrClasse
                         PartFile.write((" ".join(str(x) for x in PartDatas))+"\n")
-                if S.profileid in ('sample02','sample03'):
+                if S.profileid in ('uvpappsample02','uvpappsample03'):
                     CTDDirPath = FullDirPath / "ctd_data_cnv"
                     if not CTDDirPath.exists():
                         CTDDirPath.mkdir()
-                    CtdFile = CTDDirPath / (S.profileid + ".ctd")
-                    shutil.copy(FullDirPath/".."/ ("ctd1.ctd" if S.profileid=='sample02' else "ctd2.ctd"),CtdFile)
+                    CtdFile = CTDDirPath / (S.profileid.replace('uvpapp','lisst') + ".ctd")
+                    shutil.copy(FullDirPath/".."/ ("ctd1.ctd" if S.profileid=='uvpappsample02' else "ctd2.ctd"),CtdFile)
 
 
 if __name__ == "__main__":
     GenerateLISSTFolder(SrcProjectTitle="EcoPart TU Project UVP 6 from UVP APP" # pas le ref car on a besoin des Bv
-                                     ,TargetProjectTitle="EcoPart TU Project LISST"
+                                     ,TargetProjectTitle="EcoPart TU Project LISST Test"
                                      ,DirName="tu1_lisst")

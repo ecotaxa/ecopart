@@ -49,9 +49,31 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
     database.ExecSQL(sql)
     logging.info("Taxonomy imported")
     # db.session.execute("SET synchronous_commit TO OFF;") # aucun gain
-    # crée des projet Zoo
-    Prj=ZooProjectGeneratorTypeA()
-    Prj.Generate("EcoPart TU Zoo Project 1")
+    # création des projet Zoo, comme c'est un peu long et que ça ne change pas trés souvent, on les sauve
+    FichierZooPrj=Path(realpath(join(HERE, "..","..", "data", "ZooPrj.tsv")))
+    FichierZooSample=Path(realpath(join(HERE, "..","..", "data", "ZooSample.tsv")))
+    FichierZooAcq=Path(realpath(join(HERE, "..","..", "data", "ZooAcq.tsv")))
+    FichierZooObjHead=Path(realpath(join(HERE, "..","..", "data", "ZooObjHead.tsv")))
+    FichierZooObjField=Path(realpath(join(HERE, "..","..", "data", "ZooObjField.tsv")))
+    if not FichierZooPrj.exists() or not FichierZooSample.exists() or not FichierZooAcq.exists()\
+            or not FichierZooObjHead.exists() or not FichierZooObjField.exists():
+        Prj=ZooProjectGeneratorTypeA()
+        Prj.Generate("EcoPart TU Zoo Project 1")
+        Prj.Generate("EcoPart TU Zoo Project for UVPAPP",SamplePrefix="uvpapp")
+        Prj.Generate("EcoPart TU Zoo Project for BRU",SamplePrefix="bru")
+        Prj.Generate("EcoPart TU Zoo Project for BRU1",SamplePrefix="bru1")
+        database.ExecSQL("copy projects to '" + FichierZooPrj.as_posix() + "'")
+        database.ExecSQL("copy samples to '" + FichierZooSample.as_posix() + "'")
+        database.ExecSQL("copy acquisitions to '" + FichierZooAcq.as_posix() + "'")
+        database.ExecSQL("copy obj_head to '" + FichierZooObjHead.as_posix() + "'")
+        database.ExecSQL("copy obj_field to '" + FichierZooObjField.as_posix() + "'")
+    else:
+        database.ExecSQL("copy projects from '" + FichierZooPrj.as_posix() + "'")
+        database.ExecSQL("copy samples from '" + FichierZooSample.as_posix() + "'")
+        database.ExecSQL("copy acquisitions from '" + FichierZooAcq.as_posix() + "'")
+        database.ExecSQL("copy obj_head from '" + FichierZooObjHead.as_posix() + "'")
+        database.ExecSQL("copy obj_field from '" + FichierZooObjField.as_posix() + "'")
+        logging.info("Projets EcoTaxa Zoo imported from tsv")
 
     # Creation de projets particules
     PartPrj = PartProjectGeneratorTypeA()
@@ -78,29 +100,38 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
 
 
 
-    GenerateUVP5Folder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed"
-                                     ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU"
-                                     ,DirName="tu1_uvp5bru")
+    GenerateUVP5Folder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed",
+                       TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU",
+                       DirName="tu1_uvp5bru",
+                       ZooProjectTitle="EcoPart TU Zoo Project for BRU",
+                       SamplePrefix="bru")
 
-    GenerateUVP5Folder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed"
-                                     ,TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU1"
-                                     ,DirName="tu1_uvp5bru1"
-                                     ,BRUFormat="bru1")
+    GenerateUVP5Folder(SrcProjectTitle="EcoPart TU Project UVP 2 Precomputed",
+                       TargetProjectTitle="EcoPart TU Project UVP 5 pour load BRU1",
+                       DirName="tu1_uvp5bru1",
+                       BRUFormat="bru1",
+                       ZooProjectTitle="EcoPart TU Zoo Project for BRU1",
+                       SamplePrefix="bru1")
 
 
     PartPrj = PartProjectGeneratorTypeUVP6()
     PartPrj.Generate("EcoPart TU Project UVP6 Ref")
 
-    GenerateUVPAppFolder(SrcProjectTitle="EcoPart TU Project UVP6 Ref"
-                                         , TargetProjectTitle="EcoPart TU Project UVP 6 from UVP APP"
-                                         , DirName="tu1_uvp6uvpapp")
+    GenerateUVPAppFolder(SrcProjectTitle="EcoPart TU Project UVP6 Ref",
+                         TargetProjectTitle="EcoPart TU Project UVP 6 from UVP APP",
+                         DirName="tu1_uvp6uvpapp",
+                         ZooProjectTitle="EcoPart TU Zoo Project for UVPAPP")
 
     # On importe les données car c'est requis pour générer les données du LISST
     part_project = db.session.query(dbpart.part_projects).filter_by(ptitle="EcoPart TU Project UVP 6 from UVP APP").first()
     if part_project is None:
         raise Exception("UVPAPP Project Missing")
-    from tests.test_import import TaskInstance
-    with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}", PostParams={"new_1": "sample01","new_2": "sample02","new_3": "sample03","new_4": "sampleT1","new_5": "sampleT2","new_6": "sampleT3","starttask": "Y"}) as T:
+    # from tests.test_import import TaskInstance
+    from tests.utils import TaskInstance
+    with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}",
+                      post_params={"new_1": "uvpappsample01", "new_2": "uvpappsample02", "new_3": "uvpappsample03",
+                                   "new_4": "uvpappsampleT1", "new_5": "uvpappsampleT2", "new_6": "uvpappsampleT3",
+                                   "starttask": "Y"}) as T:
         print(f"TaskID={T.TaskID}")
         T.RunTask()
 

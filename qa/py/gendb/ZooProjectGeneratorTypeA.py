@@ -53,11 +53,11 @@ class ZooProjectGeneratorTypeA(ZooProjectGenerator):
         # Todo calculer l'ESD et le BioVolume et les stocker pour simplifier les contrôles
         self.bulk_objF.append(ObjF)
 
-    def Generate(self,Title,OwnerID=1) :
+    def Generate(self,Title,OwnerID=1,SamplePrefix="") :
         Prj=self.InitializeProject(Title,OwnerID)
         logging.info(f"Project {Prj.projid} : {Prj.title} Created")
         for samplename in ("sample01","sampleT1"):
-            Sample=self.CreateSample(samplename)
+            Sample=self.CreateSample(SamplePrefix+samplename)
             Sampleid=Sample.sampleid # if faut memoriser les ID sinon ça fait un select à chaque fois qu'on le demande
             T0=datetime(2019,11,21)
             for d in range(100):

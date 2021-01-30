@@ -9,8 +9,6 @@ from sqlalchemy.orm.session import make_transient
 
 HERE = Path(dirname(realpath(__file__)))
 
-
-
 # noinspection DuplicatedCode
 def GenerateUVPRemoteLambdaFolder(SrcProjectTitle,TargetProjectTitle, DirName):
     with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL
@@ -32,7 +30,7 @@ def GenerateUVPRemoteLambdaFolder(SrcProjectTitle,TargetProjectTitle, DirName):
         if not FullDirPath.exists():
             FullDirPath.mkdir()
         for S in db.session.query(part_samples).filter_by(pprojid=originalpprojid):
-            filenamePrefix = f"{S.profileid}_UVPSN_"+('DEPTH' if S.organizedbydeepth else 'TIME')
+            filenamePrefix = f"{S.profileid.replace('uvpapp','lambda')}_UVPSN_"+('DEPTH' if S.organizedbydeepth else 'TIME')
             metaFilePath = FullDirPath / (filenamePrefix + '_META.txt')
             lpmFilePath = FullDirPath / (filenamePrefix + '_LPM.txt')
             blackFilePath = FullDirPath / (filenamePrefix + '_BLACK.txt')
@@ -160,9 +158,9 @@ def GenerateUVPRemoteLambdaFTPProject(SrcProjectTitle,TargetProjectTitle, DirNam
 
 
 if __name__ == "__main__":
-    # GenerateUVPRemoteLambdaFolder( SrcProjectTitle="EcoPart TU Project UVP 6 from UVP APP"
-    #                                  ,TargetProjectTitle="EcoPart TU Project UVP Remote Lambda TEST"
-    #                                  ,DirName="tu1_uvp6remotelambda")
-    GenerateUVPRemoteLambdaFTPProject( SrcProjectTitle="EcoPart TU Project UVP Remote Lambda TEST"
-                                     ,TargetProjectTitle="EcoPart TU Project UVP Remote Lambda FTP"
+    GenerateUVPRemoteLambdaFolder( SrcProjectTitle="EcoPart TU Project UVP 6 from UVP APP"
+                                     ,TargetProjectTitle="EcoPart TU Project UVP Remote Lambda TEST"
                                      ,DirName="tu1_uvp6remotelambda")
+    # GenerateUVPRemoteLambdaFTPProject( SrcProjectTitle="EcoPart TU Project UVP Remote Lambda TEST"
+    #                                  ,TargetProjectTitle="EcoPart TU Project UVP Remote Lambda FTP"
+    #                                  ,DirName="tu1_uvp6remotelambda")
