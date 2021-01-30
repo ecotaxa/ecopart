@@ -262,7 +262,7 @@ Sum abundance of children categories
 
   });
   function ClearTaxo(){
-  $( "#taxolb" ).val(null).trigger("change");
+    $('#taxolb').find("option").remove();
 }
 </script>
 </form>

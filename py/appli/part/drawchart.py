@@ -414,6 +414,10 @@ def part_drawchart():
                                         x[ie] = x[ie - 1] + 1 / 24
                             else:
                                 x = edge[:-1]
+                            # Ajout systématique d'un point à 0 à la fin pour que les valeurs uniques aparaissent
+                            # quand même et affichage d'un trait vers 0 à la fin
+                            x = np.append(x, [x[len(x) - 1] + 1/24])
+                            hist = np.append(hist, [0])
                             # noinspection PyCallingNonCallable
                             graph[i].step(x, hist, color=color)
                     bottom, top = graph[i].get_ylim()
