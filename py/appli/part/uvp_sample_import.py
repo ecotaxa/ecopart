@@ -1,5 +1,6 @@
 from pathlib import Path
 import bz2
+import psycopg2.extras
 import configparser
 import io
 import matplotlib.pyplot as plt
@@ -17,6 +18,7 @@ from appli import db, app, VaultRootDir, DecodeEqualList, CreateDirConcurrentlyI
 from appli.part import PartDetClassLimit
 from appli.part.common_sample_import import CleanValue, ToFloat, GetTicks, GenerateReducedParticleHistogram, \
     GetPathForRawHistoFile
+from appli.part.ecotaxainterface import GetObjectsForTaxoHistoCompute
 from appli.tasks.importcommon import ConvTextDegreeToDecimalDegree, calcpixelfromesd_aa_exp
 
 
@@ -868,17 +870,7 @@ def GenerateTaxonomyHistogram(psampleid):
     if uvp_sample.sampleid is None:
         raise Exception("GenerateTaxonomyHistogram: Ecotaxa sampleid required in Sample %d " % psampleid)
     pixel = uvp_sample.acq_pixel
-    eco_prj = db.session.query(database.Projects).filter_by(projid=prj.projid).first()
-    if eco_prj is None:
-        raise Exception("GenerateTaxonomyHistogram: Ecotaxa project %d missing" % prj.projid)
-    objmap = DecodeEqualList(eco_prj.mappingobj)
-    areacol = None
-    for k, v in objmap.items():
-        if v.lower() == 'area':
-            areacol = k
-            break
-    if areacol is None:
-        raise Exception("GenerateTaxonomyHistogram: esd attribute required in Ecotaxa project %d" % prj.projid)
+
     # app.logger.info("Esd col is %s",areacol)
     depth_offset = prj.default_depthoffset
     if depth_offset is None:
@@ -890,28 +882,30 @@ def GenerateTaxonomyHistogram(psampleid):
     if uvp_sample.organizedbydeepth:
         lst_vol = database.GetAssoc("""select cast(round((depth-2.5)/5) as INT) tranche,watervolume 
         from part_histopart_reduit where psampleid=%s""" % psampleid)
-        # noinspection SqlResolve
-        lst_taxo_det = database.GetAll("""
-                select classif_id,floor((depth_min+{DepthOffset})/5) tranche,{areacol} areacol                           
-                from objects
-                WHERE sampleid={sampleid} and classif_id is not NULL and depth_min is not NULL 
-                and {areacol} is not NULL and classif_qual='V'
-                """.format(sampleid=uvp_sample.sampleid, areacol=areacol, DepthOffset=depth_offset))
-    else:  # to_char(objdate+objtime,'YYYYMMDD HH24:30') tranche
-        lst_vol = database.GetAssoc("""select cast(trunc(extract(epoch from datetime)/3600) as int) tranche,watervolume 
-        from part_histopart_reduit where psampleid=%s""" % psampleid)
+        lst_taxo_det = GetObjectsForTaxoHistoCompute(prj, uvp_sample.sampleid)
+        for obj in lst_taxo_det:
+            obj['tranche'] = math.floor((obj['depth'] + depth_offset) / 5)
+    else:
+        lst_voldb = database.GetAll("""select distinct datetime
+                                            ,watervolume 
+                                        from part_histopart_reduit 
+                                        where psampleid=%s""" % psampleid, None, False, psycopg2.extras.RealDictCursor)
+        lst_vol = {}
+        for vol in lst_voldb:
+            tranche = int(math.floor(vol['datetime'].timestamp() / 3600))
+            lst_vol[tranche] = vol['watervolume']
         if len(lst_vol.keys()) > 0:
             epoch0 = min(lst_vol.keys())
-        lst_vol = {k - epoch0: {'tranche': v['tranche'] - epoch0, 'watervolume': v['watervolume']}
-                   for (k, v) in lst_vol.items()}
-        # noinspection SqlResolve
-        lst_taxo_det = database.GetAll("""
-            select classif_id,cast(trunc(extract(epoch from objdate+objtime)/3600) as int)-{Epoch0} tranche
-                    ,{areacol} areacol, to_char(objdate+objtime,'YYYYMMDD HH24:30:00') datetimetranche                         
-            from objects
-            WHERE sampleid={sampleid} and classif_id is not NULL and depth_min is not NULL 
-            and {areacol} is not NULL and classif_qual='V'
-            """.format(sampleid=uvp_sample.sampleid, areacol=areacol, Epoch0=epoch0))
+        lst_vol = {k - epoch0: {'tranche': k - epoch0, 'watervolume': v} for (k, v) in lst_vol.items()}
+        lst_taxo_det = GetObjectsForTaxoHistoCompute(prj, uvp_sample.sampleid)
+        for obj in lst_taxo_det:
+            if obj['objdatetime']:
+                obj['tranche'] = math.floor(obj['objdatetime'].timestamp() / 3600) - epoch0
+                obj['datetimetranche'] = obj['objdatetime'].strftime("%Y%m%d %H:30:00")
+            else:
+                obj['tranche'] = 0
+                obj['datetimetranche'] = ""
+
     lst_taxo = {}
     for r in lst_taxo_det:
         cle = "{}/{}".format(r['classif_id'], r['tranche'])
