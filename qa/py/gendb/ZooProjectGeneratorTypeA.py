@@ -9,6 +9,8 @@ import logging
 # living>Eukaryota>Harosa>Rhizaria>Retaria>Polycystinea>Collodaria>solitarygrey
 # living>Eukaryota>Harosa>Rhizaria>Retaria>Acantharea
 # living>Eukaryota>Opisthokonta>Holomycota>Fungi>Ascomycota>Pezizomycotina>Dothideomycetes>Aulographina
+# Not validated
+# living>Eukaryota>Archaeplastida>Viridiplantae>Chlorophyta>Ulvophyceae>Bryopsidales>Halimeda>Halimeda hederacea
 
 class ZooProjectGeneratorTypeA(ZooProjectGenerator):
     def __init__(self):
@@ -62,7 +64,10 @@ class ZooProjectGeneratorTypeA(ZooProjectGenerator):
             T0=datetime(2019,11,21)
             for d in range(100):
                 # Le time delta est de 4 heure car ça ne concerne que le sample T1 de uvp6
-                self.CreateOject(Sampleid,"Acantharea",Depth=2+d*2,DateTime=T0+timedelta(hours=4,seconds=d*20),Area=300-d)
+                self.CreateOject(Sampleid,"Acantharea",Depth=2+d*2,DateTime=T0+timedelta(hours=4,seconds=d*20)
+                                 ,Area=300-d)
+                self.CreateOject(Sampleid, "Halimeda hederacea", Depth=20 + d * 2,
+                                 DateTime=T0 + timedelta(hours=4, seconds=d * 20), Area=300 - d,Qualite='N')
             for d in range(500):
                 self.CreateOject(Sampleid,"solitaryblack",Depth=2+d,DateTime=T0+timedelta(hours=4,seconds=d*20),Area=400-(d//2))
                 self.CreateOject(Sampleid,"solitarygrey" ,Depth=2+d , DateTime=T0 + timedelta(hours=4,seconds=d*20),Area=300 - (d // 3))

@@ -83,7 +83,9 @@ Lower_limit_size_class_17	1630
 Lower_limit_size_class_18	2050
 """)
                 # On ajoute les eventuelles classif taxo
-                LstClassif=database.GetAll(f"select distinct classif_id from obj_head where projid={part_project.projid}")
+                LstClassif=database.GetAll(f"""select distinct classif_id from obj_head 
+                        where projid={part_project.projid} and classif_qual='V'
+                        order by 1""")
                 DictLstClassif={v['classif_id']:i+1 for i,v in enumerate(LstClassif)}
                 for k,v in DictLstClassif.items():
                     metaFile.write(f"category_name_{v}\t{k}\n")
