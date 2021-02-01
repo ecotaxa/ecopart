@@ -177,7 +177,7 @@ class TaskPartExport(AsyncTask):
                     zfile.write(nomfichier)
             if self.param.aggregatefiles:
                 f.close()
-            zfile.write(nomfichier)
+                zfile.write(nomfichier)
 
         # --------------- Traitement fichier par categorie -------------------------------
         f=None

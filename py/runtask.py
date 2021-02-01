@@ -41,7 +41,7 @@ def RunTask(taskid,LogLevel=logging.INFO):
             os.path.join(os.path.dirname(os.path.realpath(__file__)), "temptask/task%06d" % (int(taskid))))
         os.chdir(workingdir)
         # On active le logger
-        LoggingFormat = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        LoggingFormat = '%(asctime)s - %(filename)s:%(lineno)d - %(funcName)s - %(levelname)s - %(message)s'
         logging.basicConfig(filename='TaskLog.txt', level=logging.INFO, format=LoggingFormat)
         logging_console = logging.StreamHandler()
         logging_console.setLevel(LogLevel)
