@@ -228,7 +228,7 @@ class TaskPartExport(AsyncTask):
                 if not self.param.aggregatefiles:
                     f.close()
                     zfile.write(nomfichier)
-            if self.param.aggregatefiles:
+            if self.param.aggregatefiles and f:
                 f.close()
                 zfile.write(nomfichier)
 
@@ -320,6 +320,7 @@ class TaskPartExport(AsyncTask):
                 group by classif_id,tranche
                 order by tranche """.format(depth_filter, GetTaxoHistoWaterVolumeSQLExpr('depth', 'middle'))
         lstcat = GetAssoc(sqllstcat)
+        zoo_file_par_station = {}
         if as_odv:  # ------------ RED Categories AS ODV
             nomfichier = base_file_name + "_ZOO_odv.txt"
             fichier = os.path.join(self.GetWorkingDir(), nomfichier)
@@ -342,7 +343,7 @@ class TaskPartExport(AsyncTask):
                         continue  # pas les permission d'exporter le ZOO de ce sample le saute
                     ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'], S['instrumtype'],
                              S['instrumsn'], S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude']]
-                    t = [None for i in range(3 * len(lstcat))]
+                    t = [None] * (3 * len(lstcat))
                     logging.info("sqlhisto = %s ; %s" % (sqlhisto, S["psampleid"]))
                     cat_histo = GetAll(sqlhisto, {'psampleid': S["psampleid"]})
                     water_volume = database.GetAssoc2Col(sql_wv, {'psampleid': S["psampleid"]})
@@ -370,11 +371,10 @@ class TaskPartExport(AsyncTask):
                             ligne.extend(t)
                             f.write(";".join((str(ntcv(x)) for x in ligne)))
                             f.write("\n")
-                            t = [None for i in range(3 * len(lstcat))]
+                            t = [None] * (3 * len(lstcat))
                             ligne = ['', '', '', '', '', '', '', '', '', '', '']
             zfile.write(nomfichier)
         else:  # ------------ RED Categories AS TSV
-            zoo_file_par_station = {}
             if self.param.aggregatefiles:  # Un seul fichier avec tous les fichiers aggrégés dedans
                 nomfichier = base_file_name + "_ZOO_Aggregated.tsv"
             create_file = True
@@ -404,7 +404,7 @@ class TaskPartExport(AsyncTask):
                     for v in lst_head:
                         f.write("\t%s avgesd [mm]" % (v['tree']))
                     f.write("\n")
-                t = [None for i in range(3 * len(lstcat))]
+                t = [None] * (3 * len(lstcat))
                 water_volume = database.GetAssoc2Col(sql_wv, {'psampleid': S["psampleid"]})
                 for i in range(len(cat_histo)):
                     h = cat_histo[i]
@@ -432,7 +432,7 @@ class TaskPartExport(AsyncTask):
                         ligne.extend(t)
                         f.write("\t".join((str(ntcv(x)) for x in ligne)))
                         f.write("\n")
-                        t = [None for i in range(3 * len(lstcat))]
+                        t = [None] * (3 * len(lstcat))
                 if not self.param.aggregatefiles:
                     f.close()
                     zfile.write(nomfichier)
@@ -450,14 +450,13 @@ class TaskPartExport(AsyncTask):
                         "\tPlankton filename\tProject\n")
 
                 for S in samples:
-                    visibility = self.samplesdict[S["psampleid"]][3]
+                    # noinspection PyListCreation
                     ligne = [S['station'], S['cruise'], S['site'], S['dataowner'], S['rawfilename'], S['instrumtype'],
                              S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude'], S['acq_aa'],
                              S['acq_exp'], S['acq_pixel']]
                     ligne.append(base_file_name + "_PAR_" + S['station'] + ".tsv")
-                    ligne.append(
-                        zoo_file_par_station[S['station']]
-                        if S['station'] in zoo_file_par_station else "no data available")
+                    ligne.append(zoo_file_par_station[S['station']] if S['station'] in zoo_file_par_station
+                                 else "no data available")
                     ligne.append(S['ptitle'])
                     f.write("\t".join((str(ntcv(x)) for x in ligne)))
                     f.write("\n")
@@ -544,7 +543,7 @@ class TaskPartExport(AsyncTask):
                 if not self.param.aggregatefiles:
                     f.close()
                     zfile.write(nomfichier)
-            if self.param.aggregatefiles:
+            if self.param.aggregatefiles and f:
                 f.close()
                 zfile.write(nomfichier)
 
@@ -630,6 +629,7 @@ order by tree""".format(lstcatwhere)
             group by classif_id,lineno,psampleid,depth,watervolume              
         """.format(sqlhisto)
         sqlhisto += " order by lineno"
+        zoo_file_par_station = {}
         if as_odv:
             nomfichier = base_file_name + "_ZOO_odv.txt"
             fichier = os.path.join(self.GetWorkingDir(), nomfichier)
@@ -649,7 +649,7 @@ order by tree""".format(lstcatwhere)
                         continue  # pas les permission d'exporter le ZOO de ce sample le saute
                     ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'], S['instrumtype'],
                              S['instrumsn'], S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude']]
-                    t = [None for i in range(3 * len(lstcat))]
+                    t = [None] * (3 * len(lstcat))
                     logging.info("sqlhisto=%s" % sqlhisto)
                     cat_histo = GetAll(sqlhisto, {'psampleid': S["psampleid"]})
                     for i in range(len(cat_histo)):
@@ -675,11 +675,10 @@ order by tree""".format(lstcatwhere)
                             ligne.extend(t)
                             f.write(";".join((str(ntcv(x)) for x in ligne)))
                             f.write("\n")
-                            t = [None for i in range(3 * len(lstcat))]
+                            t = [None] * (3 * len(lstcat))
                             ligne = ['', '', '', '', '', '', '', '', '', '', '']
             zfile.write(nomfichier)
         else:  # ------------ Categories AS TSV
-            ZooFileParStation = {}
             if self.param.aggregatefiles:  # Un seul fichier avec tous les fichiers aggrégés dedans
                 nomfichier = base_file_name + "_ZOO_Aggregated.tsv"
             create_file = True
@@ -693,7 +692,7 @@ order by tree""".format(lstcatwhere)
                     create_file = True
                     nomfichier = base_file_name + "_ZOO_" + S[
                         'station'] + ".tsv"  # nommé par le profileid qui est dans le champ station
-                ZooFileParStation[S['station']] = nomfichier
+                zoo_file_par_station[S['station']] = nomfichier
                 fichier = os.path.join(self.GetWorkingDir(), nomfichier)
                 if create_file:
                     create_file = False
@@ -709,7 +708,7 @@ order by tree""".format(lstcatwhere)
                     for v in lst_head:
                         f.write("\t%s avgesd [mm]" % (v['tree']))
                     f.write("\n")
-                t = [None for i in range(3 * len(lstcat))]
+                t = [None] * (3 * len(lstcat))
                 for i in range(len(cat_histo)):
                     h = cat_histo[i]
                     idx = lstcat[h['classif_id']]['idx']
@@ -735,7 +734,7 @@ order by tree""".format(lstcatwhere)
                         ligne.extend(t)
                         f.write("\t".join((str(ntcv(x)) for x in ligne)))
                         f.write("\n")
-                        t = [None for i in range(3 * len(lstcat))]
+                        t = [None] * (3 * len(lstcat))
                 if not self.param.aggregatefiles:
                     f.close()
                     zfile.write(nomfichier)
@@ -753,12 +752,13 @@ order by tree""".format(lstcatwhere)
                         "\tPlankton filename\tProject\n")
 
                 for S in samples:
+                    # noinspection PyListCreation
                     ligne = [S['station'], S['cruise'], S['site'], S['dataowner'], S['rawfilename'], S['instrumtype'],
                              S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude'], S['acq_aa'],
                              S['acq_exp'], S['acq_pixel'],
                              base_file_name + "_PAR_" + S['station'] + ".tsv"]
-                    ligne.append(
-                        ZooFileParStation[S['station']] if S['station'] in ZooFileParStation else "no data available")
+                    ligne.append(zoo_file_par_station[S['station']] if S['station'] in zoo_file_par_station
+                                 else "no data available")
                     ligne.append(S['ptitle'])
                     f.write("\t".join((str(ntcv(x)) for x in ligne)))
                     f.write("\n")
