@@ -51,11 +51,12 @@ def GetObjectsForRawExport(psampleid: int,
         left join taxonomy t12 on t11.parent_id=t12.id
         left join taxonomy t13 on t12.parent_id=t13.id
         left join taxonomy t14 on t13.parent_id=t14.id                                           
-      where ps.psampleid=%s """
+      where ps.psampleid=%s  """
     if excludenotliving:
         sql += """ and coalesce(t14.name,t13.name,t12.name,t11.name,t10.name,t9.name,t8.name,t7.name
                         ,t6.name,t5.name,t4.name,t3.name,t2.name,t1.name,t0.name)!='not-living' """
     if includenotvalidated == False:
         sql += " and oh.classif_qual='V' "
+    sql += "  order by of.orig_id,oh.objid "
     res = database.GetAll(sql, (psampleid,),cursor_factory=psycopg2.extras.RealDictCursor)
     return res
