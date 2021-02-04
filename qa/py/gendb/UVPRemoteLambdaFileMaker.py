@@ -24,6 +24,8 @@ def GenerateUVPRemoteLambdaFolder(SrcProjectTitle,TargetProjectTitle, DirName):
         part_project.remote_url="http://127.0.0.1:5050"
         part_project.remote_directory = "tu1_uvp6remotelambda"
         part_project.remote_type = 'TSV LOV'
+        projet_zoo_ref = part_project.projid
+        part_project.projid=None # pas de projet Zoo sur les remote
         db.session.add(part_project)
         db.session.commit()
         FullDirPath=(HERE / '../../..' / part_project.rawfolder).resolve(False)
@@ -84,7 +86,7 @@ Lower_limit_size_class_18	2050
 """)
                 # On ajoute les eventuelles classif taxo
                 LstClassif=database.GetAll(f"""select distinct classif_id from obj_head 
-                        where projid={part_project.projid} and classif_qual='V'
+                        where projid={projet_zoo_ref} and classif_qual='V'
                         order by 1""")
                 DictLstClassif={v['classif_id']:i+1 for i,v in enumerate(LstClassif)}
                 for k,v in DictLstClassif.items():
@@ -155,6 +157,7 @@ def GenerateUVPRemoteLambdaFTPProject(SrcProjectTitle,TargetProjectTitle, DirNam
         part_project.remote_password = "MyPassword"
         part_project.remote_directory = "tu1_uvp6remotelambda"
         part_project.remote_type = 'TSV LOV'
+        part_project.projid=None # pas de projet Zoo sur les remote
         db.session.add(part_project)
         db.session.commit()
 
