@@ -61,36 +61,66 @@ def GenerateReducedParticleHistogram(psampleid):
     , biovol12, biovol13, biovol14, biovol15
     )
     select psampleid, lineno, depth,datetime,  watervolume,
-      coalesce(class01,0)+coalesce(class02,0)+coalesce(class03,0) as c1, 
-      coalesce(class04,0)+coalesce(class05,0)+coalesce(class06,0) as c2, 
-      coalesce(class07,0)+coalesce(class08,0)+coalesce(class09,0) as c3,
-      coalesce(class10,0)+coalesce(class11,0)+coalesce(class12,0) as c4,
-      coalesce(class13,0)+coalesce(class14,0)+coalesce(class15,0) as c5,
-      coalesce(class16,0)+coalesce(class17,0)+coalesce(class18,0) as c6,
-      coalesce(class19,0)+coalesce(class20,0)+coalesce(class21,0) as c7,
-      coalesce(class22,0)+coalesce(class23,0)+coalesce(class24,0) as c8,
-      coalesce(class25,0)+coalesce(class26,0)+coalesce(class27,0) as c9,
-      coalesce(class28,0)+coalesce(class29,0)+coalesce(class30,0) as c10,
-      coalesce(class31,0)+coalesce(class32,0)+coalesce(class33,0) as c11,
-      coalesce(class34,0)+coalesce(class35,0)+coalesce(class36,0) as c12,
-      coalesce(class37,0)+coalesce(class38,0)+coalesce(class39,0) as c13,
-      coalesce(class40,0)+coalesce(class41,0)+coalesce(class42,0) as c14, 
-      coalesce(class43,0)+coalesce(class44,0)+coalesce(class45,0) as c15,
-      coalesce(biovol01,0)+coalesce(biovol02,0)+coalesce(biovol03,0) as bv1, 
-      coalesce(biovol04,0)+coalesce(biovol05,0)+coalesce(biovol06,0) as bv2, 
-      coalesce(biovol07,0)+coalesce(biovol08,0)+coalesce(biovol09,0) as bv3,
-      coalesce(biovol10,0)+coalesce(biovol11,0)+coalesce(biovol12,0) as bv4,
-      coalesce(biovol13,0)+coalesce(biovol14,0)+coalesce(biovol15,0) as bv5,
-      coalesce(biovol16,0)+coalesce(biovol17,0)+coalesce(biovol18,0) as bv6,
-      coalesce(biovol19,0)+coalesce(biovol20,0)+coalesce(biovol21,0) as bv7,
-      coalesce(biovol22,0)+coalesce(biovol23,0)+coalesce(biovol24,0) as bv8,
-      coalesce(biovol25,0)+coalesce(biovol26,0)+coalesce(biovol27,0) as bv9,
-      coalesce(biovol28,0)+coalesce(biovol29,0)+coalesce(biovol30,0) as bv10,
-      coalesce(biovol31,0)+coalesce(biovol32,0)+coalesce(biovol33,0) as bv11,
-      coalesce(biovol34,0)+coalesce(biovol35,0)+coalesce(biovol36,0) as bv12,
-      coalesce(biovol37,0)+coalesce(biovol38,0)+coalesce(biovol39,0) as bv13,
-      coalesce(biovol40,0)+coalesce(biovol41,0)+coalesce(biovol42,0) as bv14, 
-      coalesce(biovol43,0)+coalesce(biovol44,0)+coalesce(biovol45,0) as bv15
+            case when coalesce(class01,class02,class03) is not null 
+                    then coalesce(class01,0)+coalesce(class02,0)+coalesce(class03,0) end as c1,
+            case when coalesce(class04,class05,class06) is not null 
+                    then coalesce(class04,0)+coalesce(class05,0)+coalesce(class06,0) end as c2,
+            case when coalesce(class07,class08,class09) is not null 
+                    then coalesce(class07,0)+coalesce(class08,0)+coalesce(class09,0) end as c3,
+            case when coalesce(class10,class11,class12) is not null 
+                    then coalesce(class10,0)+coalesce(class11,0)+coalesce(class12,0) end as c4,
+            case when coalesce(class13,class14,class15) is not null 
+                    then coalesce(class13,0)+coalesce(class14,0)+coalesce(class15,0) end as c5,
+            case when coalesce(class16,class17,class18) is not null 
+                    then coalesce(class16,0)+coalesce(class17,0)+coalesce(class18,0) end as c6,
+            case when coalesce(class19,class20,class21) is not null 
+                    then coalesce(class19,0)+coalesce(class20,0)+coalesce(class21,0) end as c7,
+            case when coalesce(class22,class23,class24) is not null 
+                    then coalesce(class22,0)+coalesce(class23,0)+coalesce(class24,0) end as c8,
+            case when coalesce(class25,class26,class27) is not null 
+                    then coalesce(class25,0)+coalesce(class26,0)+coalesce(class27,0) end as c9,
+            case when coalesce(class28,class29,class30) is not null 
+                    then coalesce(class28,0)+coalesce(class29,0)+coalesce(class30,0) end as c10,
+            case when coalesce(class31,class32,class33) is not null 
+                    then coalesce(class31,0)+coalesce(class32,0)+coalesce(class33,0) end as c11,
+            case when coalesce(class34,class35,class36) is not null 
+                    then coalesce(class34,0)+coalesce(class35,0)+coalesce(class36,0) end as c12,
+            case when coalesce(class37,class38,class39) is not null 
+                    then coalesce(class37,0)+coalesce(class38,0)+coalesce(class39,0) end as c13,
+            case when coalesce(class40,class41,class42) is not null 
+                    then coalesce(class40,0)+coalesce(class41,0)+coalesce(class42,0) end as c14,
+            case when coalesce(class43,class44,class45) is not null 
+                    then coalesce(class43,0)+coalesce(class44,0)+coalesce(class45,0) end as c15,
+            case when coalesce(biovol01,biovol02,biovol03) is not null 
+                    then coalesce(biovol01,0)+coalesce(biovol02,0)+coalesce(biovol03,0) end as bv1,
+            case when coalesce(biovol04,biovol05,biovol06) is not null 
+                    then coalesce(biovol04,0)+coalesce(biovol05,0)+coalesce(biovol06,0) end as bv2,
+            case when coalesce(biovol07,biovol08,biovol09) is not null 
+                    then coalesce(biovol07,0)+coalesce(biovol08,0)+coalesce(biovol09,0) end as bv3,
+            case when coalesce(biovol10,biovol11,biovol12) is not null 
+                    then coalesce(biovol10,0)+coalesce(biovol11,0)+coalesce(biovol12,0) end as bv4,
+            case when coalesce(biovol13,biovol14,biovol15) is not null 
+                    then coalesce(biovol13,0)+coalesce(biovol14,0)+coalesce(biovol15,0) end as bv5,
+            case when coalesce(biovol16,biovol17,biovol18) is not null 
+                    then coalesce(biovol16,0)+coalesce(biovol17,0)+coalesce(biovol18,0) end as bv6,
+            case when coalesce(biovol19,biovol20,biovol21) is not null 
+                    then coalesce(biovol19,0)+coalesce(biovol20,0)+coalesce(biovol21,0) end as bv7,
+            case when coalesce(biovol22,biovol23,biovol24) is not null 
+                    then coalesce(biovol22,0)+coalesce(biovol23,0)+coalesce(biovol24,0) end as bv8,
+            case when coalesce(biovol25,biovol26,biovol27) is not null 
+                    then coalesce(biovol25,0)+coalesce(biovol26,0)+coalesce(biovol27,0) end as bv9,
+            case when coalesce(biovol28,biovol29,biovol30) is not null 
+                    then coalesce(biovol28,0)+coalesce(biovol29,0)+coalesce(biovol30,0) end as bv10,
+            case when coalesce(biovol31,biovol32,biovol33) is not null 
+                    then coalesce(biovol31,0)+coalesce(biovol32,0)+coalesce(biovol33,0) end as bv11,
+            case when coalesce(biovol34,biovol35,biovol36) is not null 
+                    then coalesce(biovol34,0)+coalesce(biovol35,0)+coalesce(biovol36,0) end as bv12,
+            case when coalesce(biovol37,biovol38,biovol39) is not null 
+                    then coalesce(biovol37,0)+coalesce(biovol38,0)+coalesce(biovol39,0) end as bv13,
+            case when coalesce(biovol40,biovol41,biovol42) is not null 
+                    then coalesce(biovol40,0)+coalesce(biovol41,0)+coalesce(biovol42,0) end as bv14,
+            case when coalesce(biovol43,biovol44,biovol45) is not null 
+                    then coalesce(biovol43,0)+coalesce(biovol44,0)+coalesce(biovol45,0) end as bv15
     from part_histopart_det where psampleid=""" + str(psampleid)
     database.ExecSQL(sql)
     return " reduced Histogram computed"

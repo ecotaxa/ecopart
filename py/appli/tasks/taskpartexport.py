@@ -36,6 +36,16 @@ def getCTDSQL(ctd_fixed_cols):
     return ctdsql
 
 
+def GetEmptyTaxoRow(lstcat: [], nbrbvfilled: int = 1) -> []:
+    # La premiere serie est pour les LPM initialisé à 0
+    # la seconde pour les biovolume qui ne sont pas dispo pour tout les instrument, dans ce cas ils sont à None
+    # la troisième pour les ESD Moyen par defaut à None
+    # noinspection PyTypeChecker
+    return ([0] * len(lstcat)) + \
+           ([0 if nbrbvfilled else None] * len(lstcat)) + \
+           ([None] * len(lstcat))
+
+
 def WriteODVPartColHead(f, PartClassLimit):
     for i in range(1, len(PartClassLimit)):
         f.write(";LPM (%s) [# l-1]" % (GetClassLimitTxt(PartClassLimit, i)))
@@ -88,6 +98,9 @@ class TaskPartExport(AsyncTask):
                         ,to_char(s.sampledate,'YYYY-MM-DD HH24:MI:SS') sampledate
                         ,concat(p.do_name,'(',do_email,')') dataowner
                         ,s.latitude,s.longitude,s.psampleid,s.acq_pixel,acq_aa,acq_exp,p.ptitle
+                        , (select count(totalbiovolume) 
+                           from part_histocat hc 
+                           where hc.psampleid=s.psampleid) nbrbvfilled
                         from part_samples s
                         join part_projects p on s.pprojid = p.pprojid
                         where s.psampleid in (%s)
@@ -186,8 +199,9 @@ class TaskPartExport(AsyncTask):
                         if not as_odv:  # si TSV
                             ligne = [S['station'], S['rawfilename'], ligne[7]]  # station + rawfilename + sampledate
                         ligne.extend([h['depth'], h['watervolume']])
-                        ligne.extend((((h['class%02d' % i] / h['watervolume']) if h['watervolume'] else '') for i in
-                                      range(1, len(PartRedClassLimit))))
+                        ligne.extend((((h['class%02d' % i] / h['watervolume'])
+                                       if h['class%02d' % i] is not None and h['watervolume'] else '')
+                                      for i in range(1, len(PartRedClassLimit))))
                         ligne.extend((h['biovol%02d' % i] for i in range(1, len(PartRedClassLimit))))
                         f.write(";".join((str(ntcv(x)) for x in ligne)))
                         for c in ctd_fixed_cols:
@@ -219,8 +233,9 @@ class TaskPartExport(AsyncTask):
                     if self.param.aggregatefiles:
                         ligne.extend([S['ptitle']])
                     ligne.extend([h['depth'], h['watervolume']])
-                    ligne.extend((((h['class%02d' % i] / h['watervolume']) if h['watervolume'] else '') for i in
-                                  range(1, len(PartRedClassLimit))))
+                    ligne.extend((((h['class%02d' % i] / h['watervolume'])
+                                   if h['class%02d' % i] is not None and h['watervolume'] else '')
+                                  for i in range(1, len(PartRedClassLimit))))
                     ligne.extend((h['biovol%02d' % i] for i in range(1, len(PartRedClassLimit))))
                     f.write("\t".join((str(ntcv(x)) for x in ligne)))
                     for c in ctd_fixed_cols:
@@ -344,7 +359,7 @@ class TaskPartExport(AsyncTask):
                         continue  # pas les permission d'exporter le ZOO de ce sample le saute
                     ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'], S['instrumtype'],
                              S['instrumsn'], S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude']]
-                    t = [None] * (3 * len(lstcat))
+                    t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
                     logging.info("sqlhisto = %s ; %s" % (sqlhisto, S["psampleid"]))
                     cat_histo = GetAll(sqlhisto, {'psampleid': S["psampleid"]})
                     water_volume = database.GetAssoc2Col(sql_wv, {'psampleid': S["psampleid"]})
@@ -357,7 +372,7 @@ class TaskPartExport(AsyncTask):
                         else:
                             t[idx] = ""
                         biovolume = ""
-                        if h['totalbiovolume'] and water_volume_tranche > 0:
+                        if h['totalbiovolume'] is not None and water_volume_tranche > 0:
                             biovolume = h['totalbiovolume'] / water_volume_tranche
                         t[idx + len(lstcat)] = biovolume
                         t[idx + 2 * len(lstcat)] = h['avgesd']
@@ -372,7 +387,7 @@ class TaskPartExport(AsyncTask):
                             ligne.extend(t)
                             f.write(";".join((str(ntcv(x)) for x in ligne)))
                             f.write("\n")
-                            t = [None] * (3 * len(lstcat))
+                            t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
                             ligne = ['', '', '', '', '', '', '', '', '', '', '']
             zfile.write(nomfichier)
         else:  # ------------ RED Categories AS TSV
@@ -405,7 +420,7 @@ class TaskPartExport(AsyncTask):
                     for v in lst_head:
                         f.write("\t%s avgesd [mm]" % (v['tree']))
                     f.write("\n")
-                t = [None] * (3 * len(lstcat))
+                t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
                 water_volume = database.GetAssoc2Col(sql_wv, {'psampleid': S["psampleid"]})
                 for i in range(len(cat_histo)):
                     h = cat_histo[i]
@@ -433,7 +448,7 @@ class TaskPartExport(AsyncTask):
                         ligne.extend(t)
                         f.write("\t".join((str(ntcv(x)) for x in ligne)))
                         f.write("\n")
-                        t = [None] * (3 * len(lstcat))
+                        t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
                 if not self.param.aggregatefiles:
                     f.close()
                     zfile.write(nomfichier)
@@ -500,8 +515,9 @@ class TaskPartExport(AsyncTask):
                         if not as_odv:  # si TSV
                             ligne = [S['station'], S['rawfilename'], ligne[7]]  # station + rawfilename + sampledate
                         ligne.extend([h['depth'], h['watervolume']])
-                        ligne.extend((((h['class%02d' % i] / h['watervolume']) if h['class%02d' % i] and h[
-                            'watervolume'] else '') for i in range(1, len(PartDetClassLimit))))
+                        ligne.extend((((h['class%02d' % i] / h['watervolume'])
+                                       if h['class%02d' % i] is not None and h['watervolume'] else '')
+                                      for i in range(1, len(PartDetClassLimit))))
                         ligne.extend((h['biovol%02d' % i] for i in range(1, len(PartDetClassLimit))))
                         f.write(";".join((str(ntcv(x)) for x in ligne)))
                         for c in ctd_fixed_cols:
@@ -534,7 +550,8 @@ class TaskPartExport(AsyncTask):
                         ligne.extend([S['ptitle']])
                     ligne.extend([h['depth'], h['watervolume']])
                     ligne.extend(
-                        (((h['class%02d' % i] / h['watervolume']) if h['class%02d' % i] and h['watervolume'] else '')
+                        (((h['class%02d' % i] / h['watervolume'])
+                          if h['class%02d' % i] is not None and h['watervolume'] else '')
                          for i in range(1, len(PartDetClassLimit))))
                     ligne.extend((h['biovol%02d' % i] for i in range(1, len(PartDetClassLimit))))
                     f.write("\t".join((str(ntcv(x)) for x in ligne)))
@@ -650,7 +667,7 @@ order by tree""".format(lstcatwhere)
                         continue  # pas les permission d'exporter le ZOO de ce sample le saute
                     ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'], S['instrumtype'],
                              S['instrumsn'], S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude']]
-                    t = [None] * (3 * len(lstcat))
+                    t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
                     logging.info("sqlhisto=%s" % sqlhisto)
                     cat_histo = GetAll(sqlhisto, {'psampleid': S["psampleid"]})
                     for i in range(len(cat_histo)):
@@ -676,7 +693,7 @@ order by tree""".format(lstcatwhere)
                             ligne.extend(t)
                             f.write(";".join((str(ntcv(x)) for x in ligne)))
                             f.write("\n")
-                            t = [None] * (3 * len(lstcat))
+                            t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
                             ligne = ['', '', '', '', '', '', '', '', '', '', '']
             zfile.write(nomfichier)
         else:  # ------------ Categories AS TSV
@@ -709,7 +726,7 @@ order by tree""".format(lstcatwhere)
                     for v in lst_head:
                         f.write("\t%s avgesd [mm]" % (v['tree']))
                     f.write("\n")
-                t = [None] * (3 * len(lstcat))
+                t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
                 for i in range(len(cat_histo)):
                     h = cat_histo[i]
                     idx = lstcat[h['classif_id']]['idx']
@@ -735,7 +752,7 @@ order by tree""".format(lstcatwhere)
                         ligne.extend(t)
                         f.write("\t".join((str(ntcv(x)) for x in ligne)))
                         f.write("\n")
-                        t = [None] * (3 * len(lstcat))
+                        t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
                 if not self.param.aggregatefiles:
                     f.close()
                     zfile.write(nomfichier)
@@ -846,11 +863,12 @@ order by tree""".format(lstcatwhere)
                 zoo_file_par_p_sample_id[S["psampleid"]] = nomfichier
                 fichier = os.path.join(self.GetWorkingDir(), nomfichier)
                 with open(fichier, "wt") as f:
-                    res = GetObjectsForRawExport(S['psampleid'],self.param.excludenotliving,self.param.includenotvalidated)
+                    res = GetObjectsForRawExport(S['psampleid'], self.param.excludenotliving,
+                                                 self.param.includenotvalidated)
                     if depth_offset:
                         for row in res:
                             if row['depth_including_offset']:
-                                row['depth_including_offset']+=depth_offset
+                                row['depth_including_offset'] += depth_offset
                     cols = ['orig_id', 'objid', 'name', 'taxo_hierarchy', 'classif_qual', 'depth_including_offset',
                             'psampleid']
                     extracols = list(taxo_reverse_mapping.keys())

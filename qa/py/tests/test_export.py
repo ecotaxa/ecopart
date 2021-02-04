@@ -63,6 +63,12 @@ def SupprimeDateTimeRB(nomfichier):
     return redatetime.sub(rb"", nomfichier)
 
 
+# Utile pour le timestamp du dernier recalcul histogramme taxo dans le summary
+def SupprimeTimestampRB(texte):
+    redatetime = re.compile(rb"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+")
+    return redatetime.sub(rb"", texte)
+
+
 def SupprimeCreateTime(data):
     recreatetime = re.compile(rb"<CreateTime>[^<]+</CreateTime>")
     return recreatetime.sub(rb"", data)
@@ -151,8 +157,8 @@ def check_zip_with_ref(refdirname: str, task, tmpfilename: str, FTPExportAreaFol
                 with z.open(nomfichier, "r") as fgen:
                     data_gen = SupprimeCreateTime(fgen.read())
                 if 'metadata_sum' in nomfichierref:
-                    data_ref = SupprimeDateTimeRB(data_ref)
-                    data_gen = SupprimeDateTimeRB(data_gen)
+                    data_ref = SupprimeTimestampRB(SupprimeDateTimeRB(data_ref))
+                    data_gen = SupprimeTimestampRB(SupprimeDateTimeRB(data_gen))
                 cmpresult = (data_ref == data_gen)
                 if not cmpresult:
                     tmp_file = os.path.join(task.GetWorkingDir(), tmpfilename)
