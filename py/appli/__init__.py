@@ -28,7 +28,7 @@ from flask import Flask,render_template,request,g
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import Security
 import inspect,html,math,threading,time,traceback
-import appli.securitycachedstore
+from flask_security import SQLAlchemyUserDatastore
 import matplotlib
 matplotlib.use('Agg')
 
@@ -50,7 +50,7 @@ def XSSEscape(txt):
 
 import appli.database
 # Setup Flask-Security
-user_datastore = appli.securitycachedstore.SQLAlchemyUserDatastoreCACHED(db, database.users, database.roles)
+user_datastore = SQLAlchemyUserDatastore(db, database.users, database.roles)
 security = Security(app, user_datastore)
 
 app.MRUClassif = {} # Dictionnaire des valeurs recement utilisé par les classifications
