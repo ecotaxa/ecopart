@@ -159,6 +159,111 @@ class TaskPartExport(AsyncTask):
             depth_filter += " and depth<=%d" % int(self.param.redfiltres.get('filt_depthmax'))
         return depth_filter
 
+    def writeTSVSummaryFile(self, base_file_name, samples, zfile, zoo_file_par_station):
+        nomfichier = base_file_name + "_Export_metadata_summary.tsv"
+        fichier = os.path.join(self.GetWorkingDir(), nomfichier)
+        with open(fichier, 'w', encoding='latin-1') as f:
+            f.write("profile\tCruise\tSite\tDataOwner\tRawfilename\tInstrument\tCTDrosettefilename"
+                    "\tyyyy-mm-dd hh:mm\tLatitude \tLongitude\taa\texp\tPixel size\tParticle filename"
+                    "\tPlankton filename\tProject\n")
+
+            for S in samples:
+                # noinspection PyListCreation
+                ligne = [S['station'], S['cruise'], S['site'], S['dataowner'], S['rawfilename'], S['instrumtype'],
+                         S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude'], S['acq_aa'],
+                         S['acq_exp'], S['acq_pixel']]
+                ligne.append(base_file_name + "_PAR_" + S['station'] + ".tsv")
+                ligne.append(zoo_file_par_station[S['station']] if S['station'] in zoo_file_par_station
+                             else "no data available")
+                ligne.append(S['ptitle'])
+                f.write("\t".join((str(ntcv(x)) for x in ligne)))
+                f.write("\n")
+        zfile.write(nomfichier)
+
+    def writeOdvCategHeader(self, f, header_suffix, lstcat):
+        self.WriteODVCommentArea(f)
+        lst_head = sorted(lstcat.values(), key=lambda cat: cat['idx'])
+        for v in lst_head:
+            f.write(";%s %s [# m-3]" % (v['nom'], header_suffix))
+        for v in lst_head:
+            f.write(";%s biovolume %s [mm3 l-1]" % (v['nom'], header_suffix))
+        for v in lst_head:
+            f.write(";%s avgesd %s [mm]" % (v['nom'], header_suffix))
+        f.write("\n")
+
+    # noinspection DuplicatedCode
+    def writeTSVPart(self, base_file_name, samples, sqlhisto, zfile, partclasslimit):
+        ctd_fixed_cols = getCTDFixedCols()
+        if self.param.aggregatefiles:  # Un seul fichier avec tous les fichiers aggrégés dedans
+            nomfichier = base_file_name + "_PAR_Aggregated.tsv"
+        else:
+            nomfichier = None
+        create_file = True
+        f = None
+        for S in samples:
+            if not self.param.aggregatefiles:  # Un seul fichier avec tous les fichiers aggrégés dedans
+                create_file = True
+                # nommé par le profileid qui est dans le champ station
+                nomfichier = base_file_name + "_PAR_" + S['station'] + ".tsv"
+            if create_file:
+                create_file = False
+                f = self.createTSVPartFile(nomfichier, partclasslimit, ctd_fixed_cols)
+            self.pgcur.execute(sqlhisto, [S["psampleid"], S["psampleid"]])
+            for h in self.pgcur:
+                if ntcv(h['fdatetime']) == '':
+                    ligne = [S['station'], S['rawfilename'], S['sampledate']]
+                else:
+                    ligne = [S['station'], S['rawfilename'], h['fdatetime']]
+                if self.param.aggregatefiles:
+                    ligne.extend([S['ptitle']])
+                ligne.extend([h['depth'], h['watervolume']])
+                ligne.extend((((h['class%02d' % i] / h['watervolume'])
+                               if h['class%02d' % i] is not None and h['watervolume'] else '')
+                              for i in range(1, len(partclasslimit))))
+                ligne.extend((h['biovol%02d' % i] for i in range(1, len(partclasslimit))))
+                f.write("\t".join((str(ntcv(x)) for x in ligne)))
+                for c in ctd_fixed_cols:
+                    f.write("\t%s" % (ntcv(h["ctd_" + c])))
+                f.write("\n")
+            if not self.param.aggregatefiles:
+                f.close()
+                zfile.write(nomfichier)
+        if self.param.aggregatefiles and f:
+            f.close()
+            zfile.write(nomfichier)
+        return nomfichier
+
+    # noinspection DuplicatedCode
+    def writeOdvPart(self, base_file_name, samples, sqlhisto, zfile, partclasslimit):
+        ctd_fixed_cols = getCTDFixedCols()
+        nomfichier = base_file_name + "_PAR_odv.txt"
+        fichier = os.path.join(self.GetWorkingDir(), nomfichier)
+        with open(fichier, 'w', encoding='latin-1') as f:
+            self.WriteODVCommentArea(f)
+            WriteODVPartColHead(f, partclasslimit)
+            for S in samples:
+                ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'], S['instrumtype'],
+                         S['instrumsn'], S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude']]
+                self.pgcur.execute(sqlhisto, [S["psampleid"], S["psampleid"]])
+                for h in self.pgcur:
+                    if ntcv(h['fdatetime']) == '':
+                        ligne[8] = S['sampledate']
+                    else:
+                        ligne[8] = h['fdatetime']
+                    ligne.extend([h['depth'], h['watervolume']])
+                    ligne.extend((((h['class%02d' % i] / h['watervolume'])
+                                   if h['class%02d' % i] is not None and h['watervolume'] else '')
+                                  for i in range(1, len(partclasslimit))))
+                    ligne.extend((h['biovol%02d' % i] for i in range(1, len(partclasslimit))))
+                    f.write(";".join((str(ntcv(x)) for x in ligne)))
+                    for c in ctd_fixed_cols:
+                        f.write(";%s" % (ntcv(h["ctd_" + c])))
+                    f.write("\n")
+                    ligne = ['', '', '', '', '', '', '', '', '', '', '']
+        zfile.write(nomfichier)
+        return nomfichier
+
+    # noinspection DuplicatedCode
     def CreateRED(self):
         logging.info("CreateRED Input Param = %s" % (self.param.__dict__,))
         as_odv = (self.param.fileformat == 'ODV')
@@ -182,72 +287,9 @@ class TaskPartExport(AsyncTask):
         logging.info("samples = %s" % samples)
         # -------------------------- Fichier Particules --------------------------------
         if as_odv:
-            nomfichier = base_file_name + "_PAR_odv.txt"
-            fichier = os.path.join(self.GetWorkingDir(), nomfichier)
-            with open(fichier, 'w', encoding='latin-1') as f:
-                self.WriteODVCommentArea(f)
-                WriteODVPartColHead(f, PartRedClassLimit)
-                for S in samples:
-                    ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'], S['instrumtype'],
-                             S['instrumsn'], S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude']]
-                    self.pgcur.execute(sqlhisto, [S["psampleid"], S["psampleid"]])
-                    for h in self.pgcur:
-                        if ntcv(h['fdatetime']) == '':
-                            ligne[8] = S['sampledate']
-                        else:
-                            ligne[8] = h['fdatetime']
-                        if not as_odv:  # si TSV
-                            ligne = [S['station'], S['rawfilename'], ligne[7]]  # station + rawfilename + sampledate
-                        ligne.extend([h['depth'], h['watervolume']])
-                        ligne.extend((((h['class%02d' % i] / h['watervolume'])
-                                       if h['class%02d' % i] is not None and h['watervolume'] else '')
-                                      for i in range(1, len(PartRedClassLimit))))
-                        ligne.extend((h['biovol%02d' % i] for i in range(1, len(PartRedClassLimit))))
-                        f.write(";".join((str(ntcv(x)) for x in ligne)))
-                        for c in ctd_fixed_cols:
-                            f.write(";%s" % (ntcv(h["ctd_" + c])))
-                        f.write("\n")
-                        ligne = ['', '', '', '', '', '', '', '', '', '', '']
-            zfile.write(nomfichier)
+            nomfichier = self.writeOdvPart(base_file_name, samples, sqlhisto, zfile, PartRedClassLimit)
         else:  # -------- Particule TSV --------------------------------
-            if self.param.aggregatefiles:  # Un seul fichier avec tous les fichiers aggrégés dedans
-                nomfichier = base_file_name + "_PAR_Aggregated.tsv"
-            else:
-                nomfichier = None
-            create_file = True
-            f = None
-            for S in samples:
-                if not self.param.aggregatefiles:  # Un seul fichier avec tous les fichiers aggrégés dedans
-                    create_file = True
-                    # nommé par le profileid qui est dans le champ station
-                    nomfichier = base_file_name + "_PAR_" + S['station'] + ".tsv"
-                if create_file:
-                    create_file = False
-                    f = self.createTSVPartFile(nomfichier, PartRedClassLimit, ctd_fixed_cols)
-                self.pgcur.execute(sqlhisto, [S["psampleid"], S["psampleid"]])
-                for h in self.pgcur:
-                    if ntcv(h['fdatetime']) == '':
-                        ligne = [S['station'], S['rawfilename'], S['sampledate']]
-                    else:
-                        ligne = [S['station'], S['rawfilename'], h['fdatetime']]
-                    if self.param.aggregatefiles:
-                        ligne.extend([S['ptitle']])
-                    ligne.extend([h['depth'], h['watervolume']])
-                    ligne.extend((((h['class%02d' % i] / h['watervolume'])
-                                   if h['class%02d' % i] is not None and h['watervolume'] else '')
-                                  for i in range(1, len(PartRedClassLimit))))
-                    ligne.extend((h['biovol%02d' % i] for i in range(1, len(PartRedClassLimit))))
-                    f.write("\t".join((str(ntcv(x)) for x in ligne)))
-                    for c in ctd_fixed_cols:
-                        f.write("\t%s" % (ntcv(h["ctd_" + c])))
-                    f.write("\n")
-                if not self.param.aggregatefiles:
-                    f.close()
-                    zfile.write(nomfichier)
-            if self.param.aggregatefiles and f:
-                f.close()
-                zfile.write(nomfichier)
-
+            nomfichier = self.writeTSVPart(base_file_name, samples, sqlhisto, zfile, PartRedClassLimit)
         # --------------- Traitement fichier par categorie -------------------------------
         f = None
         taxo_list = self.param.redfiltres.get('taxo', [])
@@ -338,26 +380,19 @@ class TaskPartExport(AsyncTask):
         lstcat = GetAssoc(sqllstcat)
         zoo_file_par_station = {}
         if as_odv:  # ------------ RED Categories AS ODV
+            if self.param.redfiltres.get('taxochild', '') == '1':
+                header_suffix = "w/ children"
+            else:
+                header_suffix = "w/o children"
             nomfichier = base_file_name + "_ZOO_odv.txt"
             fichier = os.path.join(self.GetWorkingDir(), nomfichier)
             with open(fichier, 'w', encoding='latin-1') as f:
-                self.WriteODVCommentArea(f)
-                if self.param.redfiltres.get('taxochild', '') == '1':
-                    header_suffix = "w/ children"
-                else:
-                    header_suffix = "w/o children"
-                lst_head = sorted(lstcat.values(), key=lambda cat: cat['idx'])
-                for v in lst_head:
-                    f.write(";%s %s [# m-3]" % (v['nom'], header_suffix))
-                for v in lst_head:
-                    f.write(";%s biovolume %s [mm3 l-1]" % (v['nom'], header_suffix))
-                for v in lst_head:
-                    f.write(";%s avgesd %s [mm]" % (v['nom'], header_suffix))
-                f.write("\n")
+                self.writeOdvCategHeader(f, header_suffix, lstcat)
                 for S in samples:
                     if self.samplesdict[S["psampleid"]][3][1] != 'Y':  # 3 = visibility, 1 =Second char=Zoo visibility
                         continue  # pas les permission d'exporter le ZOO de ce sample le saute
-                    ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'], S['instrumtype'],
+                    ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'],
+                             S['instrumtype'],
                              S['instrumsn'], S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude']]
                     t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
                     logging.info("sqlhisto = %s ; %s" % (sqlhisto, S["psampleid"]))
@@ -431,7 +466,7 @@ class TaskPartExport(AsyncTask):
                     else:
                         t[idx] = ""
                     biovolume = ""
-                    if h['totalbiovolume'] and water_volume_tranche:
+                    if h['totalbiovolume'] is not None and water_volume_tranche > 0:
                         biovolume = h['totalbiovolume'] / water_volume_tranche
                     t[idx + len(lstcat)] = biovolume
                     t[idx + 2 * len(lstcat)] = h['avgesd']
@@ -442,7 +477,8 @@ class TaskPartExport(AsyncTask):
                         fin_ligne = True
 
                     if fin_ligne:
-                        ligne = [S['station'], S['rawfilename'], S['sampledate'], h['tranche'], water_volume_tranche]
+                        ligne = [S['station'], S['rawfilename'], S['sampledate'], h['tranche'],
+                                 water_volume_tranche]
                         if self.param.aggregatefiles:
                             ligne.append(S['ptitle'])
                         ligne.extend(t)
@@ -458,26 +494,9 @@ class TaskPartExport(AsyncTask):
 
         # -------------------------- Fichier Synthèse TSV only --------------------------------
         if not as_odv:
-            nomfichier = base_file_name + "_Export_metadata_summary.tsv"
-            fichier = os.path.join(self.GetWorkingDir(), nomfichier)
-            with open(fichier, 'w', encoding='latin-1') as f:
-                f.write("profile\tCruise\tSite\tDataOwner\tRawfilename\tInstrument\tCTDrosettefilename"
-                        "\tyyyy-mm-dd hh:mm\tLatitude \tLongitude\taa\texp\tPixel size\tParticle filename"
-                        "\tPlankton filename\tProject\n")
+            self.writeTSVSummaryFile(base_file_name, samples, zfile, zoo_file_par_station)
 
-                for S in samples:
-                    # noinspection PyListCreation
-                    ligne = [S['station'], S['cruise'], S['site'], S['dataowner'], S['rawfilename'], S['instrumtype'],
-                             S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude'], S['acq_aa'],
-                             S['acq_exp'], S['acq_pixel']]
-                    ligne.append(base_file_name + "_PAR_" + S['station'] + ".tsv")
-                    ligne.append(zoo_file_par_station[S['station']] if S['station'] in zoo_file_par_station
-                                 else "no data available")
-                    ligne.append(S['ptitle'])
-                    f.write("\t".join((str(ntcv(x)) for x in ligne)))
-                    f.write("\n")
-            zfile.write(nomfichier)
-
+    # noinspection DuplicatedCode
     def CreateDET(self):
         logging.info("CreateDET Input Param = %s" % (self.param.__dict__,))
         as_odv = (self.param.fileformat == 'ODV')
@@ -498,73 +517,9 @@ class TaskPartExport(AsyncTask):
         logging.info("samples = %s" % samples)
         # -------------------------- Fichier Particules --------------------------------
         if as_odv:
-            nomfichier = base_file_name + "_PAR_odv.txt"
-            fichier = os.path.join(self.GetWorkingDir(), nomfichier)
-            with open(fichier, 'w', encoding='latin-1') as f:
-                self.WriteODVCommentArea(f)
-                WriteODVPartColHead(f, PartDetClassLimit)
-                for S in samples:
-                    ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'], S['instrumtype'],
-                             S['instrumsn'], S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude']]
-                    self.pgcur.execute(sqlhisto, [S["psampleid"], S["psampleid"]])
-                    for h in self.pgcur:
-                        if ntcv(h['fdatetime']) == '':
-                            ligne[8] = S['sampledate']
-                        else:
-                            ligne[8] = h['fdatetime']
-                        if not as_odv:  # si TSV
-                            ligne = [S['station'], S['rawfilename'], ligne[7]]  # station + rawfilename + sampledate
-                        ligne.extend([h['depth'], h['watervolume']])
-                        ligne.extend((((h['class%02d' % i] / h['watervolume'])
-                                       if h['class%02d' % i] is not None and h['watervolume'] else '')
-                                      for i in range(1, len(PartDetClassLimit))))
-                        ligne.extend((h['biovol%02d' % i] for i in range(1, len(PartDetClassLimit))))
-                        f.write(";".join((str(ntcv(x)) for x in ligne)))
-                        for c in ctd_fixed_cols:
-                            f.write(";%s" % (ntcv(h["ctd_" + c])))
-                        f.write("\n")
-                        ligne = ['', '', '', '', '', '', '', '', '', '', '']
-            zfile.write(nomfichier)
+            nomfichier = self.writeOdvPart(base_file_name, samples, sqlhisto, zfile, PartDetClassLimit)
         else:  # -------- Particule TSV --------------------------------
-            if self.param.aggregatefiles:  # Un seul fichier avec tous les fichiers aggrégés dedans
-                nomfichier = base_file_name + "_PAR_Aggregated.tsv"
-            else:
-                nomfichier = None
-            f = None
-            create_file = True
-            for S in samples:
-                if not self.param.aggregatefiles:
-                    # nommé par le profileid qui est dans le champ station
-                    nomfichier = base_file_name + "_PAR_" + S['station'] + ".tsv"
-                    create_file = True
-                if create_file:
-                    create_file = False
-                    f = self.createTSVPartFile(nomfichier, PartDetClassLimit, ctd_fixed_cols)
-                self.pgcur.execute(sqlhisto, [S["psampleid"], S["psampleid"]])
-                for h in self.pgcur:
-                    if ntcv(h['fdatetime']) == '':
-                        ligne = [S['station'], S['rawfilename'], S['sampledate']]
-                    else:
-                        ligne = [S['station'], S['rawfilename'], h['fdatetime']]
-                    if self.param.aggregatefiles:
-                        ligne.extend([S['ptitle']])
-                    ligne.extend([h['depth'], h['watervolume']])
-                    ligne.extend(
-                        (((h['class%02d' % i] / h['watervolume'])
-                          if h['class%02d' % i] is not None and h['watervolume'] else '')
-                         for i in range(1, len(PartDetClassLimit))))
-                    ligne.extend((h['biovol%02d' % i] for i in range(1, len(PartDetClassLimit))))
-                    f.write("\t".join((str(ntcv(x)) for x in ligne)))
-                    for c in ctd_fixed_cols:
-                        f.write("\t%s" % (ntcv(h["ctd_" + c])))
-                    f.write("\n")
-                if not self.param.aggregatefiles:
-                    f.close()
-                    zfile.write(nomfichier)
-            if self.param.aggregatefiles and f:
-                f.close()
-                zfile.write(nomfichier)
-
+            nomfichier = self.writeTSVPart(base_file_name, samples, sqlhisto, zfile, PartDetClassLimit)
         # --------------- Traitement fichier par categorie -------------------------------
         f = None
         # On liste les categories pour fixer les colonnes de l'export
@@ -649,26 +604,18 @@ order by tree""".format(lstcatwhere)
         sqlhisto += " order by lineno"
         zoo_file_par_station = {}
         if as_odv:
+            header_suffix = ""
             nomfichier = base_file_name + "_ZOO_odv.txt"
             fichier = os.path.join(self.GetWorkingDir(), nomfichier)
             with open(fichier, 'w', encoding='latin-1') as f:
-                self.WriteODVCommentArea(f)
-                header_suffix = ""
-                lst_head = sorted(lstcat.values(), key=lambda cat: cat['idx'])
-                for v in lst_head:
-                    f.write(";%s %s [# m-3]" % (v['nom'], header_suffix))
-                for v in lst_head:
-                    f.write(";%s biovolume %s [mm3 l-1]" % (v['nom'], header_suffix))
-                for v in lst_head:
-                    f.write(";%s avgesd %s [mm]" % (v['nom'], header_suffix))
-                f.write("\n")
+                self.writeOdvCategHeader(f, header_suffix, lstcat)
                 for S in samples:
                     if self.samplesdict[S["psampleid"]][3][1] != 'Y':  # 3 = visibility, 1 =Second char=Zoo visibility
                         continue  # pas les permission d'exporter le ZOO de ce sample le saute
                     ligne = [S['cruise'], S['site'], S['station'], S['dataowner'], S['rawfilename'], S['instrumtype'],
                              S['instrumsn'], S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude']]
                     t = GetEmptyTaxoRow(lstcat, S['nbrbvfilled'])
-                    logging.info("sqlhisto=%s" % sqlhisto)
+                    logging.info("sqlhisto = %s ; %s" % (sqlhisto, S["psampleid"]))
                     cat_histo = GetAll(sqlhisto, {'psampleid': S["psampleid"]})
                     for i in range(len(cat_histo)):
                         h = cat_histo[i]
@@ -762,25 +709,7 @@ order by tree""".format(lstcatwhere)
 
         # -------------------------- Fichier Synthèse TSV only --------------------------------
         if not as_odv:
-            nomfichier = base_file_name + "_Export_metadata_summary.tsv"
-            fichier = os.path.join(self.GetWorkingDir(), nomfichier)
-            with open(fichier, 'w', encoding='latin-1') as f:
-                f.write("profile\tCruise\tSite\tDataOwner\tRawfilename\tInstrument\tCTDrosettefilename"
-                        "\tyyyy-mm-dd hh:mm\tLatitude \tLongitude\taa\texp\tPixel size\tParticle filename"
-                        "\tPlankton filename\tProject\n")
-
-                for S in samples:
-                    # noinspection PyListCreation
-                    ligne = [S['station'], S['cruise'], S['site'], S['dataowner'], S['rawfilename'], S['instrumtype'],
-                             S['ctd_origfilename'], S['sampledate'], S['latitude'], S['longitude'], S['acq_aa'],
-                             S['acq_exp'], S['acq_pixel'],
-                             base_file_name + "_PAR_" + S['station'] + ".tsv"]
-                    ligne.append(zoo_file_par_station[S['station']] if S['station'] in zoo_file_par_station
-                                 else "no data available")
-                    ligne.append(S['ptitle'])
-                    f.write("\t".join((str(ntcv(x)) for x in ligne)))
-                    f.write("\n")
-            zfile.write(nomfichier)
+            self.writeTSVSummaryFile(base_file_name, samples, zfile, zoo_file_par_station)
 
     def CreateRAW(self):
         logging.info("CreateRAW Input Param = %s" % (self.param.__dict__,))
