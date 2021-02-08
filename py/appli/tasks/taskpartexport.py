@@ -36,7 +36,7 @@ def getCTDSQL(ctd_fixed_cols):
     return ctdsql
 
 
-def GetEmptyTaxoRow(lstcat: [], nbrbvfilled: int = 1) -> []:
+def GetEmptyTaxoRow(lstcat: list, nbrbvfilled: int = 1) -> list:
     # La premiere serie est pour les LPM initialisé à 0
     # la seconde pour les biovolume qui ne sont pas dispo pour tout les instrument, dans ce cas ils sont à None
     # la troisième pour les ESD Moyen par defaut à None

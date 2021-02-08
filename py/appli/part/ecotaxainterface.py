@@ -26,7 +26,7 @@ def GetObjectsForTaxoHistoCompute(prj: partdatabase.part_projects, eco_sampleid:
 
 def GetObjectsForRawExport(psampleid: int,
                            excludenotliving: bool,
-                           includenotvalidated: bool) -> []:
+                           includenotvalidated: bool) -> list:
     sql = """select of.*
         ,t0.display_name as "name", classif_qual ,ps.psampleid                        
         ,((oh.depth_min+oh.depth_max)/2) as depth_including_offset,objid
