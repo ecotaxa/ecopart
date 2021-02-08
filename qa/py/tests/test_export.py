@@ -74,6 +74,20 @@ def SupprimeCreateTime(data):
     return recreatetime.sub(rb"", data)
 
 
+def SupprimerColFromTSV(data: bytes, colname: bytes):
+    lignes = data.split(b'\n')
+    colindex = -1
+    for i, l in enumerate(lignes):
+        cols = l.split(b'\t')
+        if i == 0:
+            if colname in cols:
+                colindex = cols.index(colname)
+        elif colindex >= 0 and len(cols) > colindex:
+            cols[colindex] = b""
+        lignes[i] = b'\t'.join(cols)
+    return b'\n'.join(lignes)
+
+
 def isBZ2(file: Path) -> bool:
     if file.exists():
         with file.open('rb') as f:
@@ -159,6 +173,9 @@ def check_zip_with_ref(refdirname: str, task, tmpfilename: str, FTPExportAreaFol
                 if 'metadata_sum' in nomfichierref:
                     data_ref = SupprimeTimestampRB(SupprimeDateTimeRB(data_ref))
                     data_gen = SupprimeTimestampRB(SupprimeDateTimeRB(data_gen))
+                if 'ZOO_raw' in nomfichierref or 'metadata_sum' in nomfichierref:
+                    data_ref = SupprimerColFromTSV(data_ref, b'psampleid')
+                    data_gen = SupprimerColFromTSV(data_gen, b'psampleid')
                 cmpresult = (data_ref == data_gen)
                 if not cmpresult:
                     tmp_file = os.path.join(task.GetWorkingDir(), tmpfilename)
