@@ -32,4 +32,4 @@ if application.PythonExecutable=="TBD":
         if not Path(application.PythonExecutable).exists(): # version Ecotaxa portable
             application.PythonExecutable= "python.exe" # sous apache il n'as pas le nom de l'exe, grace à venv il est dans le path
     else:
-        application.PythonExecutable='/usr/local/bin/python3'
+        application.PythonExecutable='python3'
