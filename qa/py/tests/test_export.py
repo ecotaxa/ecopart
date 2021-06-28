@@ -6,6 +6,7 @@ import logging
 import os
 import pytest
 import re
+import math
 from os.path import dirname, realpath
 from pathlib import Path
 from appli import appli
@@ -86,6 +87,26 @@ def SupprimerColFromTSV(data: bytes, colname: bytes):
             cols[colindex] = b""
         lignes[i] = b'\t'.join(cols)
     return b'\n'.join(lignes)
+
+
+def checkCompareTSV(data_ref, data_gen, separator_regex=b'\t|;'):
+    lignes_r = data_ref.split(b'\n')
+    lignes_g = data_gen.split(b'\n')
+    if len(lignes_r) != len(lignes_g):
+        return False
+    for (row_r, row_g) in zip(lignes_r, lignes_g):
+        cols_r = re.split(separator_regex,row_r)
+        cols_g = re.split(separator_regex,row_g)
+        if len(cols_r) != len(cols_g):
+            return False
+        for (col_r, col_g) in zip(cols_r, cols_g):
+            if col_r.replace(b'.', b'', 1).strip().isdigit() and col_r.replace(b'.', b'', 1).strip().isdigit():  # les deux sont des float
+                if not math.isclose(float(col_r.strip()), float(col_g.strip()), abs_tol=1e-18):
+                    return False
+            else:  # pas des chiffres on compare l'égalité des texte
+                if col_r != col_g:
+                    return False
+    return True
 
 
 def isBZ2(file: Path) -> bool:
@@ -176,7 +197,7 @@ def check_zip_with_ref(refdirname: str, task, tmpfilename: str, FTPExportAreaFol
                 if 'ZOO_raw' in nomfichierref or 'metadata_sum' in nomfichierref:
                     data_ref = SupprimerColFromTSV(data_ref, b'psampleid')
                     data_gen = SupprimerColFromTSV(data_gen, b'psampleid')
-                cmpresult = (data_ref == data_gen)
+                cmpresult = checkCompareTSV(data_ref,data_gen)
                 if not cmpresult:
                     tmp_file = os.path.join(task.GetWorkingDir(), tmpfilename)
                     ref_tmp_file = os.path.join(task.GetWorkingDir(), 'ref_' + tmpfilename)

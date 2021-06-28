@@ -123,7 +123,7 @@ Lower_limit_size_class_18	2050
                     TAxoCols.append(f"NB_PLANKTON_cat_{i+1}")
                     TAxoCols.append(f"SIZE_PLANKTON_cat_{i + 1}")
                 lst = database.GetAll("""select classif_id,depth,datetime,watervolume,nbr,avgesd,totalbiovolume 
-                                from part_histocat where psampleid=(%s)""", [S.psampleid])
+                                from part_histocat where psampleid=(%s)  order by 1,2,3""", [S.psampleid])
                 if len(lst)>0:
                     with taxo2FilePath.open("w", newline='') as taxo2File:
                         wtaxo2File = csv.DictWriter(taxo2File, delimiter='\t', fieldnames=TAxoCols)

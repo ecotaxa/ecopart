@@ -1,5 +1,6 @@
 from os.path import dirname, realpath,join
 from pathlib import Path
+import sys
 import logging
 from appli import database,app,g,db
 import appli.part.prj as common_sample_import
@@ -28,6 +29,12 @@ HERE = Path(dirname(realpath(__file__)))
 
 import manage
 import appli
+
+TESTAPPTESTFOLDER=realpath(join(HERE,"..","tests"))
+sys.path=[TESTAPPTESTFOLDER]+sys.path
+# print(sys.path)
+# requis pour from utils import TaskInstance (qui est test.utils)
+
 
 logging.basicConfig( format='%(asctime)s %(filename)s: %(message)s',level=logging.DEBUG)
 # logging.info("Hello")
@@ -127,7 +134,7 @@ with app.app_context():# Création d'un contexte pour utiliser les fonction GetA
     if part_project is None:
         raise Exception("UVPAPP Project Missing")
     # from tests.test_import import TaskInstance
-    from tests.utils import TaskInstance
+    from utils import TaskInstance  # en fait tests.utils grace à la modif du path
     with TaskInstance(app,"TaskPartZooscanImport", GetParams=f"p={part_project.pprojid}",
                       post_params={"new_1": "uvpappsample01", "new_2": "uvpappsample02", "new_3": "uvpappsample03",
                                    "new_4": "uvpappsampleT1", "new_5": "uvpappsampleT2", "new_6": "uvpappsampleT3",
