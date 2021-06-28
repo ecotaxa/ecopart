@@ -10,9 +10,10 @@ from typing import Dict
 import psycopg2.extras
 from flask_login import current_user
 from flask_security import UserMixin, RoleMixin
-from sqlalchemy import Index, func
+from sqlalchemy import Index, func, Integer, String, SmallInteger, Boolean, DateTime, event, DDL
 from sqlalchemy.dialects.postgresql import BIGINT, FLOAT, VARCHAR, DATE, TIME, DOUBLE_PRECISION, INTEGER, CHAR, \
     TIMESTAMP, REAL
+from sqlalchemy.dialects.postgresql.base import BYTEA
 
 from appli import db, app, g, XSSEscape
 
@@ -165,6 +166,7 @@ class Projects(db.Model):
     projid = db.Column(INTEGER, db.Sequence('seq_projects'), primary_key=True)
     title = db.Column(VARCHAR(255), nullable=False)
     visible = db.Column(db.Boolean(), default=True)
+    license = db.Column(VARCHAR(16), default="", nullable=False)
     status = db.Column(VARCHAR(40), default="Annotate")  # Annotate, ExploreOnly, Annotate No Prediction
     mappingobj = db.Column(VARCHAR)
     mappingsample = db.Column(VARCHAR)
@@ -235,6 +237,7 @@ class ProjectsPriv(db.Model):
     projid = db.Column(INTEGER, db.ForeignKey('projects.projid', ondelete="CASCADE"), nullable=False)
     member = db.Column(db.Integer, db.ForeignKey('users.id'))
     privilege = db.Column(VARCHAR(255), nullable=False)
+    extra = db.Column(VARCHAR(1), nullable=True)
     memberrel = db.relationship("users")
     refproject = db.relationship('Projects', backref=db.backref('projmembers', cascade="all, delete-orphan",
                                                                 single_parent=True))  # ,cascade='delete'
@@ -261,43 +264,45 @@ class Samples(db.Model):
     sampleid = db.Column(BIGINT, db.Sequence('seq_samples'), primary_key=True)
     projid = db.Column(INTEGER, db.ForeignKey('projects.projid'))
     project = db.relationship("Projects")
-    orig_id = db.Column(VARCHAR(255))
+    orig_id = db.Column(VARCHAR(255), nullable=False)
     latitude = db.Column(DOUBLE_PRECISION)
     longitude = db.Column(DOUBLE_PRECISION)
     dataportal_descriptor = db.Column(VARCHAR(8000))
 
     def __str__(self):
-        return "{0} ({1})".format(self.orig_id, self.processid)
+        return "{0} ({1})".format(self.orig_id, self.sampleid)
 
 
 for i in range(1, 31):
     setattr(Samples, "t%02d" % i, db.Column(VARCHAR(250)))
-Index('IS_SamplesProject', Samples.__table__.c.projid)
+Index('IS_SamplesProjectOrigId', Samples.__table__.c.projid, Samples.__table__.c.orig_id, unique=True)
 
 
 class Acquisitions(db.Model):
     __tablename__ = 'acquisitions'
-    acquisid = db.Column(BIGINT, db.Sequence('seq_acquisitions'), primary_key=True)
-    projid = db.Column(INTEGER, db.ForeignKey('projects.projid'))
-    project = db.relationship("Projects")
-    orig_id = db.Column(VARCHAR(255))
+    acquisid = db.Column(INTEGER, db.Sequence('seq_acquisitions'), primary_key=True)
+    acq_sample_id = db.Column(INTEGER, db.ForeignKey('samples.sampleid'), nullable=False)
+    orig_id = db.Column(VARCHAR(255), nullable=False)
     instrument = db.Column(VARCHAR(255))
 
     def __str__(self):
-        return "{0} ({1})".format(self.orig_id, self.processid)
+        return "{0} ({1})".format(self.orig_id, self.acquisid)
 
 
 for i in range(1, 31):
     setattr(Acquisitions, "t%02d" % i, db.Column(VARCHAR(250)))
-Index('IS_AcquisitionsProject', Acquisitions.__table__.c.projid)
+
+
+# TODO: Enforce another way
+#    Index('IS_AcquisitionsProjectOrigId', Acquisitions.__table__.c.projid, Acquisitions.__table__.c.orig_id, unique=True)
 
 
 class Process(db.Model):
     __tablename__ = 'process'
-    processid = db.Column(BIGINT, db.Sequence('seq_process'), primary_key=True)
-    projid = db.Column(INTEGER, db.ForeignKey('projects.projid'))
-    project = db.relationship("Projects")
-    orig_id = db.Column(VARCHAR(255))
+    # Now a common key with Acquisitions
+    processid = db.Column(INTEGER, db.ForeignKey('acquisitions.acquisid', onupdate="CASCADE", ondelete="CASCADE"),
+                          primary_key=True)
+    orig_id = db.Column(VARCHAR(255), nullable=False)
 
     def __str__(self):
         return "{0} ({1})".format(self.orig_id, self.processid)
@@ -305,14 +310,18 @@ class Process(db.Model):
 
 for i in range(1, 31):
     setattr(Process, "t%02d" % i, db.Column(VARCHAR(250)))
-Index('IS_ProcessProject', Process.__table__.c.projid)
 
 
 class Objects(db.Model):
     __tablename__ = 'obj_head'
     objid = db.Column(BIGINT, db.Sequence('seq_objects'), primary_key=True)
-    projid = db.Column(INTEGER, db.ForeignKey('projects.projid'), nullable=False)
-    project = db.relationship("Projects")
+    # Parent
+    acquisid = db.Column(INTEGER, db.ForeignKey('acquisitions.acquisid'), nullable=False)
+    acquis = db.relationship("Acquisitions")
+    # User-provided identifier
+    orig_id = db.Column(VARCHAR(255), nullable=False)
+    object_link = db.Column(VARCHAR(255))
+
     latitude = db.Column(DOUBLE_PRECISION)
     longitude = db.Column(DOUBLE_PRECISION)
     objdate = db.Column(DATE)
@@ -339,19 +348,13 @@ class Objects(db.Model):
     classif_auto = db.relationship("Taxonomy", primaryjoin="Taxonomy.id==foreign(Objects.classif_auto_id)",
                                    uselist=False, )
     classif_crossvalidation_id = db.Column(INTEGER)
-    img0id = db.Column(BIGINT)
-    img0 = db.relationship("Images", foreign_keys="Images.objid")
-    imgcount = db.Column(INTEGER)
+
+    images = db.relationship("Images")
+
     complement_info = db.Column(VARCHAR)
     similarity = db.Column(DOUBLE_PRECISION)
     sunpos = db.Column(CHAR(1))  # position du soleil
     random_value = db.Column(INTEGER)
-    sampleid = db.Column(INTEGER, db.ForeignKey('samples.sampleid'))
-    sample = db.relationship("Samples")
-    acquisid = db.Column(INTEGER, db.ForeignKey('acquisitions.acquisid'))
-    acquis = db.relationship("Acquisitions")
-    processid = db.Column(INTEGER, db.ForeignKey('process.processid'))
-    processrel = db.relationship("Process")
 
 
 class ObjectsFields(db.Model):
@@ -359,8 +362,6 @@ class ObjectsFields(db.Model):
     objfid = db.Column(BIGINT, db.ForeignKey('obj_head.objid', ondelete="CASCADE"), primary_key=True)
     objhrel = db.relationship("Objects", foreign_keys="Objects.objid",
                               primaryjoin="ObjectsFields.objfid==Objects.objid", uselist=False, backref="objfrel")
-    orig_id = db.Column(VARCHAR(255))
-    object_link = db.Column(VARCHAR(255))
 
 
 # Ajout des colonnes numériques & textuelles libres
@@ -368,6 +369,7 @@ for i in range(1, 501):
     setattr(ObjectsFields, "n%02d" % i, db.Column(FLOAT))
 for i in range(1, 21):
     setattr(ObjectsFields, "t%02d" % i, db.Column(VARCHAR(250)))
+
 
 
 # noinspection PyPep8Naming
@@ -383,22 +385,16 @@ class Objects_cnn_features(db.Model):
 for i in range(1, 51):
     setattr(Objects_cnn_features, "cnn%02d" % i, db.Column(REAL))
 
-# Index('IS_ObjectsProject',Objects.__table__.c.projid,Objects.__table__.c.classif_qual)
-# utile pour home de  classif manu, car PG ne sait pas utiliser les Skip scan index.
-Index('is_objectsprojectonly', Objects.__table__.c.projid)
-Index('is_objectsprojclassifqual', Objects.__table__.c.projid, Objects.__table__.c.classif_id,
+Index('is_objectsacqclassifqual', Objects.__table__.c.acquisid, Objects.__table__.c.classif_id,
       Objects.__table__.c.classif_qual)
+Index('is_objectsacqrandom', Objects.__table__.c.acquisid, Objects.__table__.c.random_value,
+      Objects.__table__.c.classif_qual)
+Index('is_objectsdepth', Objects.__table__.c.depth_max, Objects.__table__.c.depth_min, Objects.__table__.c.acquisid)
 Index('is_objectslatlong', Objects.__table__.c.latitude, Objects.__table__.c.longitude)
-Index('is_objectssample', Objects.__table__.c.sampleid)
-Index('is_objectsdepth', Objects.__table__.c.depth_max, Objects.__table__.c.depth_min, Objects.__table__.c.projid)
-Index('is_objectstime', Objects.__table__.c.objtime, Objects.__table__.c.projid)
-Index('is_objectsdate', Objects.__table__.c.objdate, Objects.__table__.c.projid)
-Index('is_objectsprojrandom', Objects.__table__.c.projid, Objects.__table__.c.random_value,
-      Objects.__table__.c.classif_qual)
-Index('is_objectfieldsorigid', ObjectsFields.__table__.c.orig_id)
+Index('is_objectstime', Objects.__table__.c.objtime, Objects.__table__.c.acquisid)
+Index('is_objectsdate', Objects.__table__.c.objdate, Objects.__table__.c.acquisid)
 # For FK checks during deletion
 Index('is_objectsacquisition', Objects.__table__.c.acquisid)
-Index('is_objectsprocess', Objects.__table__.c.processid)
 
 
 class ObjectsClassifHisto(db.Model):
@@ -416,17 +412,36 @@ class Images(db.Model):
     __tablename__ = 'images'
     imgid = db.Column(BIGINT, db.Sequence('seq_images'), primary_key=True)  # manuel ,db.Sequence('seq_images')
     objid = db.Column(BIGINT, db.ForeignKey('obj_head.objid'))
-    imgrank = db.Column(INTEGER)
-    file_name = db.Column(VARCHAR(255))
-    orig_file_name = db.Column(VARCHAR(255))
-    width = db.Column(INTEGER)
-    height = db.Column(INTEGER)
+    imgrank = db.Column(INTEGER, nullable=False)
+    file_name = db.Column(VARCHAR(255), nullable=False)
+    orig_file_name = db.Column(VARCHAR(255), nullable=False)
+    width = db.Column(INTEGER, nullable=False)
+    height = db.Column(INTEGER, nullable=False)
     thumb_file_name = db.Column(VARCHAR(255))
     thumb_width = db.Column(INTEGER)
     thumb_height = db.Column(INTEGER)
 
 
-Index('IS_ImagesObjects', Images.__table__.c.objid)
+# Covering index with rank
+Index('is_imageobjrank', Images.__table__.c.objid, Images.__table__.c.imgrank, unique=True)
+# To track corresponding files
+Index('is_image_file', Images.__table__.c.file_name)
+
+
+class ImageFile(db.Model):
+    # An image on disk. Can be referenced (or not...) from the application
+    __tablename__ = 'image_file'
+    # Path inside the Vault
+    path = db.Column(VARCHAR, primary_key=True)
+    # State w/r to the application
+    state = db.Column(CHAR, default="?", server_default="?", nullable=False)
+    # What can be found in digest column
+    digest_type = db.Column(CHAR, default="?", server_default="?", nullable=False)
+    # A digital signature
+    digest = db.Column(BYTEA, nullable=True)
+
+
+Index('is_phy_image_file', ImageFile.__table__.c.digest_type, ImageFile.__table__.c.digest)
 
 
 # Sequence("seq_images",1,1)

@@ -101,7 +101,7 @@ def checkCompareTSV(data_ref, data_gen, separator_regex=b'\t|;'):
             return False
         for (col_r, col_g) in zip(cols_r, cols_g):
             if col_r.replace(b'.', b'', 1).strip().isdigit() and col_r.replace(b'.', b'', 1).strip().isdigit():  # les deux sont des float
-                if not math.isclose(float(col_r.strip()), float(col_g.strip()), abs_tol=1e-18):
+                if not math.isclose(float(col_r.strip()), float(col_g.strip()), abs_tol=1e-8):
                     return False
             else:  # pas des chiffres on compare l'égalité des texte
                 if col_r != col_g:
@@ -154,7 +154,7 @@ def check_compare_zip(refzip: Path, resultzip: Path, tmpdir: str, dirsuffix: str
         result_filename = tmpdir_path_result / nomfichierfull
         with open(tmpdir_path_result / nomfichierfull, "rb") as fresult:
             data_result = SupprimeCreateTime(fresult.read())
-        cmpresult = (data_ref == data_result)
+        cmpresult = checkCompareTSV(data_ref, data_result)
         if not cmpresult:
             ShowOnWinmerge(ref_filename, result_filename)
         assert cmpresult

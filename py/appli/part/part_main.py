@@ -202,7 +202,8 @@ def PartstatsampleGetData():
     taxo_stat = database.GetAll("""
             SELECT ps.sampleid,count(*) nbr,count(case when classif_qual='V' then 1 end) nbrval,ps.pprojid
             from part_samples ps
-            join obj_head oh on oh.sampleid=ps.sampleid
+            join acquisitions acq on acq.acq_sample_id=ps.sampleid
+            join obj_head oh on oh.acquisid=acq.acquisid 
             where ps.psampleid in ({0})
             group by ps.sampleid,ps.pprojid  """.format(sampleinclause))
     result_taxo_stat = {'nbrobj': 0, 'nbrobjval': 0, 'pctval100pct': 0, 'pctpartval': 0, 'pctobjval': 0}

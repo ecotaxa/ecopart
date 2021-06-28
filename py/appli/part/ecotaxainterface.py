@@ -18,7 +18,8 @@ def GetObjectsForTaxoHistoCompute(prj: partdatabase.part_projects, eco_sampleid:
     lst_taxo_det = database.GetAll("""
                     select classif_id,depth_min depth,objdate+objtime objdatetime,{areacol} areacol                           
                     from objects
-                    WHERE sampleid={sampleid} and classif_id is not NULL and depth_min is not NULL 
+                    join acquisitions on objects.acquisid=acquisitions.acquisid
+                    WHERE acq_sample_id={sampleid} and classif_id is not NULL and depth_min is not NULL 
                     and {areacol} is not NULL and classif_qual='V'
                     """.format(sampleid=eco_sampleid, areacol=areacol), None, False, psycopg2.extras.RealDictCursor)
     return lst_taxo_det
@@ -27,14 +28,15 @@ def GetObjectsForTaxoHistoCompute(prj: partdatabase.part_projects, eco_sampleid:
 def GetObjectsForRawExport(psampleid: int,
                            excludenotliving: bool,
                            includenotvalidated: bool) -> list:
-    sql = """select of.*
+    sql = """select of.*,oh.orig_id
         ,t0.display_name as "name", classif_qual ,ps.psampleid                        
         ,((oh.depth_min+oh.depth_max)/2) as depth_including_offset,objid
         ,concat(t14.name||'>',t13.name||'>',t12.name||'>',t11.name||'>',t10.name||'>',t9.name||'>'
                 ,t8.name||'>',t7.name||'>',t6.name||'>',t5.name||'>',t4.name||'>',t3.name||'>'
                 ,t2.name||'>',t1.name||'>',t0.name) taxo_hierarchy
       from part_samples ps
-      join obj_head oh on ps.sampleid=oh.sampleid 
+      join acquisitions acq on acq.acq_sample_id=ps.sampleid
+      join obj_head oh on acq.acq_sample_id=oh.acquisid 
       join obj_field of on of.objfid=oh.objid                      
         join taxonomy t0 on oh.classif_id=t0.id
         left join taxonomy t1 on t0.parent_id=t1.id
@@ -57,6 +59,6 @@ def GetObjectsForRawExport(psampleid: int,
                         ,t6.name,t5.name,t4.name,t3.name,t2.name,t1.name,t0.name)!='not-living' """
     if includenotvalidated == False:
         sql += " and oh.classif_qual='V' "
-    sql += "  order by of.orig_id,oh.objid "
+    sql += "  order by oh.orig_id,oh.objid "
     res = database.GetAll(sql, (psampleid,),cursor_factory=psycopg2.extras.RealDictCursor)
     return res

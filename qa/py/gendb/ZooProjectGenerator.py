@@ -176,18 +176,6 @@ t17=exposure"""
         self.RevMapAcq = {v: k for k, v in self.MapAcq.items()}
         self.RevMapObj = {v: k for k, v in self.MapObj.items()}
 
-        # Creation d'une Acq unique pour le projet
-        self.Acq = database.Acquisitions()
-        self.Acq.projid = self.projid
-        self.Acq.orig_id = 'Acq01'
-        setattr(self.Acq, self.RevMapAcq['aa'], self.aa)
-        setattr(self.Acq, self.RevMapAcq['exp'], self.exp)
-        setattr(self.Acq, self.RevMapAcq['pixel'], self.pixel)
-        setattr(self.Acq, self.RevMapAcq['volimage'], self.volimage)
-        db.session.add(self.Acq)
-        db.session.commit()
-        self.Acquisid = self.Acq.acquisid
-
         return self.Prj
 
     def GetTaxoByName(self, Name):

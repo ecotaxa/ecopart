@@ -22,14 +22,29 @@ class ZooProjectGeneratorTypeA(ZooProjectGenerator):
         Sample.orig_id=SampleName
         db.session.add(Sample)
         db.session.commit()
+        # Creation d'une Acq unique pour le projet
+        self.Acq = database.Acquisitions()
+        # self.Acq.projid = self.projid
+        self.Acq.acquisid = Sample.sampleid
+        self.Acq.acq_sample_id= Sample.sampleid
+        self.Acq.orig_id = 'Acq01'
+        setattr(self.Acq, self.RevMapAcq['aa'], self.aa)
+        setattr(self.Acq, self.RevMapAcq['exp'], self.exp)
+        setattr(self.Acq, self.RevMapAcq['pixel'], self.pixel)
+        setattr(self.Acq, self.RevMapAcq['volimage'], self.volimage)
+        db.session.add(self.Acq)
+        db.session.commit()
+        self.Acquisid = self.Acq.acquisid
+
         return Sample
 
     def CreateOject(self,Sampleid,Taxo,Depth,DateTime,Area,Qualite='V'):
         objid = self.obj_seq_cache.next()
         Obj=database.Objects()
         Obj.objid=objid
-        Obj.projid=self.projid
         Obj.sampleid=Sampleid
+        Obj.acquisid = Sampleid # c'est les mêmes
+        Obj.orig_id="MyOrigID"
         Obj.acquisid=self.Acquisid
         Obj.classif_id=self.GetTaxoByName(Taxo)
         Obj.classif_qual=Qualite
@@ -76,7 +91,11 @@ class ZooProjectGeneratorTypeA(ZooProjectGenerator):
                 self.CreateOject(Sampleid,"fiber<detritus",Depth=2+d,DateTime=T0+timedelta(hours=4,seconds=d*20),Area=150)
             self.SaveBulkObjects()
 
-        nbr=database.GetAll("select count(*) nbr from obj_head where projid=%(projid)s",{'projid':self.projid})[0]['nbr']
+        nbr=database.GetAll("""select count(*) nbr 
+            from obj_head
+            join acquisitions a on obj_head.acquisid = a.acquisid
+            join samples s on a.acq_sample_id = s.sampleid 
+            where projid=%(projid)s""",{'projid':self.projid})[0]['nbr']
         logging.info(f"Created {nbr} objects")
 
 

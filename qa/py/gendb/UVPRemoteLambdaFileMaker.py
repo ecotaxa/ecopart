@@ -85,7 +85,10 @@ Lower_limit_size_class_17	1630
 Lower_limit_size_class_18	2050
 """)
                 # On ajoute les eventuelles classif taxo
-                LstClassif=database.GetAll(f"""select distinct classif_id from obj_head 
+                LstClassif=database.GetAll(f"""select distinct classif_id 
+                        from obj_head
+                        join acquisitions a on obj_head.acquisid = a.acquisid
+                        join samples s on a.acq_sample_id = s.sampleid 
                         where projid={projet_zoo_ref} and classif_qual='V'
                         order by 1""")
                 DictLstClassif={v['classif_id']:i+1 for i,v in enumerate(LstClassif)}

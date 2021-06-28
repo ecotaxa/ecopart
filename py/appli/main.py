@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # This file is part of Ecotaxa, see license.md in the application root directory for license informations.
 # Copyright (C) 2015-2016  Picheral, Colin, Irisson (UPMC-CNRS)
-from flask import Blueprint, render_template, g, request,url_for
+from flask import Blueprint, render_template, g, request, url_for, redirect
 from flask_login import current_user
 from appli import app,ObjectToStr,PrintInCharte,database,db
 from flask_security.decorators import roles_accepted
@@ -14,6 +14,8 @@ app.register_blueprint(vaultBP)
 
 @app.route('/')
 def index():
+    # a terme il y aura une page de présentation, mais pour l'instant on renvoi juste vers /part/
+    return redirect("/part/", code=302)
     txt="""<div style='margin:5px;'><div id="homeText"'>"""
     #lecture du message de l'application manager
     NomFichier='appli/static/home/appmanagermsg.html'
