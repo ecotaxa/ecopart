@@ -69,14 +69,6 @@ def dbcreate():
 
 
 @manager.command
-def createsampledata():
-    r = database.Projects.query.filter_by(projid=1).first()
-    if r is None:
-        db.session.add(database.Projects(projid=1, title="Test Project 1"))
-        db.session.commit()
-
-
-@manager.command
 def ForceTest1Values():
     from appli.tasks.taskmanager import LoadTask
     t = LoadTask(14)
@@ -92,13 +84,6 @@ def ResetDBSequence(cur=None):
         print("Start Sequence Reset")
         if cur is None:
             cur = db.session
-        cur.execute("SELECT setval('seq_acquisitions', (SELECT max(acquisid) FROM acquisitions), true)")
-        cur.execute("SELECT setval('seq_images', (SELECT max(imgid) FROM images), true)")
-        cur.execute("SELECT setval('seq_objects', (SELECT max(objid) FROM obj_head), true)")
-        cur.execute("SELECT setval('seq_process', (SELECT max(processid) FROM process), true)")
-        cur.execute("SELECT setval('seq_projects', (SELECT max(projid) FROM projects), true)")
-        cur.execute("SELECT setval('seq_projectspriv', (SELECT max(id) FROM projectspriv), true)")
-        cur.execute("SELECT setval('seq_samples', (SELECT max(sampleid) FROM samples), true)")
         cur.execute("SELECT setval('seq_taxonomy', (SELECT max(id) FROM taxonomy), true)")
         cur.execute("SELECT setval('seq_temp_tasks', (SELECT max(id) FROM temp_tasks), true)")
         cur.execute("SELECT setval('seq_users', (SELECT max(id) FROM users), true)")
@@ -107,18 +92,6 @@ def ResetDBSequence(cur=None):
         cur.execute("SELECT setval('part_samples_psampleid_seq', (SELECT max(psampleid) FROM part_samples), true)")
         print("Sequence Reset Done")
 
-
-
-@manager.command
-def RecomputeStats():
-    """
-    Recompute stats related on Taxonomy and Projects
-    """
-    import appli.cron
-    with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL qui mémorisent
-        g.db = None
-        appli.cron.RefreshAllProjectsStat()
-        appli.cron.RefreshTaxoStat()
 
 
 @manager.option('-u', '--UseExistingDatabase', dest='UseExistingDatabase', default=False, help="UseExistingDatabase True/False")
@@ -213,21 +186,6 @@ def CreateDB(UseExistingDatabase=False,SkipConfirmation=False):
 ('Vietnam'),('Yemen'),('Zambia'),('Zimbabwe')"""
         database.ExecSQL(sql)
         print("Creation Done")
-
-
-@manager.command
-def ExtractCategoriesFromRFModel(modeldir):
-    from sklearn.externals import joblib
-    import json
-    from pathlib import Path
-    with app.app_context():  # Création d'un contexte pour utiliser les fonction GetAll,ExecSQL qui mémorisent
-        g.db = None
-        ModelFolder = Path("RF_models") / modeldir
-        Meta = json.load((ModelFolder / "meta.json").open("r"))
-        Classifier = joblib.load(ModelFolder / 'random_forest.jbl')
-        # Meta['categories']=[int(x) for x in Classifier.classes_]
-        Meta['categories'] = {r[0]: r[1] for r in database.GetTaxoNameFromIdList([int(x) for x in Classifier.classes_])}
-        json.dump(Meta, (ModelFolder / "meta.json").open("w"), indent="\t")
 
 
 @manager.option('-p', '--projectid', dest='ProjectID', type=int, default=None, required=True,

@@ -41,18 +41,6 @@
 <link rel="stylesheet" href="/static/fontawesome-free-5.5.0-web/css/all.min.css">
 
 <script>
-function AddZoom(element)
-{
-//index=element.attr("id").substring(1,10)
-var pos=element.attr("pos");
-element.addimagezoom({ // single image zoom
-		zoomrange: [4, 10],
-		magnifiersize: [400,400],
-		magnifierpos: pos,
-		cursorshade: true,
-		largeimage: '/vault/'+element.attr('data-zoom-image')
-	});
-};
 
 $(document).ready(function() {
 });
@@ -119,15 +107,6 @@ $(document).ready(function() {
   ga('send', 'pageview');
 </script>
 {% endif %}
-{#<div style="position: fixed;top:0;left: 0px;z-index: 100;color:red;display: none;" id="ZoomWarning">Ecotaxa is designed to use 100% browser zoom</div>#}
-{#<script>#}
-{#function CheckBrowserZoom() {#}
-{#  if ((window.devicePixelRatio > 0) && (window.devicePixelRatio !== 1))#}
-{#    $('#ZoomWarning').show();#}
-{#}#}
-{#CheckBrowserZoom();#}
-{#window.resize =CheckBrowserZoom;#}
-{#</script>#}
 {% if g.cookieGAOK=='' and g.google_analytics_id  %}
   <div style="position: fixed;bottom: 0;height: 100px;left: 0;;right:0;background-color: rgba(0,0,0,0.90);color: white;z-index: 10000;" id="DivGAAccept">
   <div style="display: flex;align-items: center; width: 1000px;margin-right: auto;margin-left: auto;margin-top: 20px;">
