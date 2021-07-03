@@ -41,7 +41,7 @@ def indexPart():
     g.headcenter = """<h1 style='text-align: center;cursor: pointer;' >
       <span onclick="$('#particleinfodiv').toggle()"><b>PARTICLE</b> module 
       <span class='glyphicon glyphicon-info-sign'></span> </span> 
-      <a href='/' style='font-size:medium;margin-left: 50px;'>Go to Ecotaxa</a></h2>"""
+      <a href='https://ecotaxa.obs-vlfr.fr' style='font-size:medium;margin-left: 50px;'>Go to Ecotaxa</a></h2>"""
     g.useselect4 = True
     # noinspection PyUnresolvedReferences
     return PrintInCharte(

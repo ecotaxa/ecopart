@@ -336,16 +336,16 @@ order by Lower(u.name)""")
     return " ".join(["<li><a href='mailto:{1}{0}'>{2} ({1})</a></li> ".format(sujet, *r) for r in lst_users])
 
 
-ecotaxa_version = "2.4.2"
+ecotaxa_version = "1.0.0"
 
 
-def JinjaGetEcotaxaVersionText():
-    return ecotaxa_version + " 2020-09-16"
+def JinjaGetEcoPartVersionText():
+    return ecotaxa_version + " 2021-07-03"
 
 
 app.jinja_env.filters['datetime'] = JinjaFormatDateTime
 app.jinja_env.filters['nl2br'] = JinjaNl2BR
-app.jinja_env.globals.update(GetManagerList=JinjaGetManagerList, GetEcotaxaVersionText=JinjaGetEcotaxaVersionText)
+app.jinja_env.globals.update(GetManagerList=JinjaGetManagerList, GetEcoPartVersionText=JinjaGetEcoPartVersionText)
 
 """Changelog
 2020-09-16 : V 2.4.2

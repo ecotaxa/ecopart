@@ -99,9 +99,10 @@ def before_request_security():
         g.menu.append(("/part/prj/","Projects management"))
     g.useradmin=False
     g.appliadmin=False
-    if current_user.has_role(database.AdministratorLabel) or current_user.has_role(database.ProjectCreatorLabel) :
-        g.menu.append(("","SEP"))
-        g.menu.append(("javascript:PostDynForm('/taxo/browse/',{updatestat:'Y'});", "Manage Taxonomy"))
+    # Todo réactiver en version finale
+    # if current_user.has_role(database.AdministratorLabel) or current_user.has_role(database.ProjectCreatorLabel) :
+    #     g.menu.append(("","SEP"))
+    #     g.menu.append(("javascript:PostDynForm('/taxo/browse/',{updatestat:'Y'});", "Manage Taxonomy"))
     if current_user.has_role(database.AdministratorLabel) or current_user.has_role(database.UserAdministratorLabel) :
         g.menu.append(("","SEP"))
         g.menu.append(("/admin/","Admin Screen"))
@@ -111,8 +112,9 @@ def before_request_security():
         g.menu.append(("/Task/listall","Task Manager"))
         g.appliadmin=True
 
-    g.menu.append(("","SEP"))
-    g.menu.append(("/change","Change Password"))
+    # Todo réactiver en version finale
+    # g.menu.append(("","SEP"))
+    # g.menu.append(("/change","Change Password"))
 
 @app.teardown_appcontext
 def before_teardown_commitdb(error):

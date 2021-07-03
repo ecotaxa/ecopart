@@ -31,6 +31,8 @@ SQLTreeJoin = """left join taxonomy t1 on t.parent_id=t1.id
 
 @app.route('/taxo/browse/', methods=['GET', 'POST'])
 def routetaxobrowse():
+    # Todo réactiver en version finale
+    return PrintInCharte("Features temporarily disabled")
     if gvp('updatestat') == 'Y':
         DoFullSync()
     g.taxoserver_url = app.config.get('TAXOSERVER_URL')
@@ -54,6 +56,8 @@ def routetaxodosync():
 
 
 def DoFullSync():
+    # Todo réactiver en version finale
+    return ""
     txt = ""
     try:
         updatable_cols = ['parent_id', 'name', 'taxotype', 'taxostatus', 'id_source', 'id_instance', 'rename_to',

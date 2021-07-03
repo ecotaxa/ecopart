@@ -5,15 +5,18 @@
 
 {% from "security/_custommacros.html" import render_field_with_errors, render_field,display_field_errors %}
 
-  <p>Ecotaxa Version : {{   GetEcotaxaVersionText() }}</p>
+  <p>EcoPart Version : {{   GetEcoPartVersionText() }}</p>
   <h3>Registration</h3>
-      <br><br>
-      <a href='/register' class="btn btn-success btn-lg"><span class="fas fa-user-plus"></span>&nbsp;&nbsp;Create your EcoTaxa account</a>
+{#      <br><br>#}
+{#      <a href='/register' class="btn btn-success btn-lg"><span class="fas fa-user-plus"></span>&nbsp;&nbsp;Create your EcoTaxa account</a>#}
 
-				<p style="margin-top: 20px;font-size: small;">In case of registration problem or if you want to avoid Google reCaptcha on Account creation page for privacy reasons
-          , please send an email to one the following persons in order to proceed to a manual account creation</p>
-				<ul style="font-size: small;">{{ GetManagerList('Ecotaxa : Account issue')|safe }}</ul>
-				
+{#				<p style="margin-top: 20px;font-size: small;">In case of registration problem or if you want to avoid Google reCaptcha on Account creation page for privacy reasons#}
+{#          , please send an email to one the following persons in order to proceed to a manual account creation</p>#}
+{#				<ul style="font-size: small;">{{ GetManagerList('Ecotaxa : Account issue')|safe }}</ul>#}
+
+				<p style="margin-top: 30px;margin-bottom: 30px;font-size: medium;">EcoPart use EcoTaxa authentication, you must register on <a href="https://ecotaxa.obs-vlfr.fr/">EcoTaxa</a> to be able to use EcoPart.</p>
+
+
     <a href="/privacy">Our privacy statement</a>
 		</div>
 
