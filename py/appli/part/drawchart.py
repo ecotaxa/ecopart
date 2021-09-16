@@ -316,7 +316,10 @@ def part_drawchart():
                         if r[xcolname] is None or r['y'] is None:
                             continue
                         if profil_vertical:
-                            data[valcount] = (-r['y'], r[xcolname])
+                            x_val = r[xcolname]
+                            if c == 'datetime':
+                                x_val = matplotlib.dates.date2num(x_val)
+                            data[valcount] = (-r['y'], x_val)
                         else:
                             if time_absolute:
                                 y = matplotlib.dates.date2num(r['y'])
