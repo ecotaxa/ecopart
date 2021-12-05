@@ -1,6 +1,7 @@
-from appli import db
-from appli.part import database
-import typing, appli, math, logging
+from Zoo_DB import database as zoo_database
+from part_app.app import db
+from part_app import database
+import typing, math, logging
 from datetime import datetime, timedelta
 
 
@@ -8,13 +9,14 @@ class PartProjectGeneratorTypeA:
     def __init__(self):
         self.Prj: typing.Optional[database.part_projects()] = None
         self.pprojid = None
-        self.Zooprojid=None
+        self.Zooprojid = None
 
     def Generate(self, Title, OwnerID=1):
         self.Prj = database.part_projects()
         self.Prj.ptitle = Title
         self.Prj.ownerid = OwnerID
-        self.Zooprojid = db.session.query(appli.database.Projects).filter_by(title="EcoPart TU Zoo Project 1").first().projid
+        self.Zooprojid = db.session.query(zoo_database.Projects).filter_by(
+            title="EcoPart TU Zoo Project 1").first().projid
         self.Prj.projid = self.Zooprojid
         self.Prj.instrumtype = 'uvp5'
         self.Prj.op_name = 'My OP Name'
@@ -28,31 +30,31 @@ class PartProjectGeneratorTypeA:
         db.session.commit()
         self.pprojid = self.Prj.pprojid
         logging.info(f"Project {self.pprojid} created : {Title}")
-        Sample = self.GenerateSample("sample01",1)
+        Sample = self.GenerateSample("sample01", 1)
         self.GenerateParticules(Sample)
-        Sample = self.GenerateSample("sample02",2)
-        self.GenerateParticules(Sample, Coeff=1.2,NbrImages=2)
-        Sample = self.GenerateSample("sample03",3)
-        self.GenerateParticules(Sample, Coeff=0.8,NbrImages=3)
+        Sample = self.GenerateSample("sample02", 2)
+        self.GenerateParticules(Sample, Coeff=1.2, NbrImages=2)
+        Sample = self.GenerateSample("sample03", 3)
+        self.GenerateParticules(Sample, Coeff=0.8, NbrImages=3)
         logging.info(f"Filled 3 Samples")
 
     # noinspection PyMethodMayBeStatic
-    def GenerateParticules(self, Sample, Coeff:float=1,NbrImages:float=1): #   utilisé par héritier
+    def GenerateParticules(self, Sample, Coeff: float = 1, NbrImages: float = 1):  # utilisé par héritier
         def Clean(x):
             if x <= 0:  # supprimer les negatif
                 return 0
-            return int(x * Coeff*NbrImages)  # applique le Coeff et arrondi à l'entier
+            return int(x * Coeff * NbrImages)  # applique le Coeff et arrondi à l'entier
 
         Histo = []
         for d in range(300):
             h = database.part_histopart_det()
             h.psampleid = Sample.psampleid
-            h.datetime=Sample.sampledate+timedelta(seconds=63*d)
+            h.datetime = Sample.sampledate + timedelta(seconds=63 * d)
             h.lineno = d
             h.depth = d * 5 + 2.5  # c'est des tranche de 5 m
-            h.watervolume = Sample.acq_volimage*NbrImages
-            for i in range(1,46):
-                setattr(h,f"class{i:02d}",0)
+            h.watervolume = Sample.acq_volimage * NbrImages
+            for i in range(1, 46):
+                setattr(h, f"class{i:02d}", 0)
             # Classe reduite 6 = Det 16->18
             h.class17 = Clean(400 - d)
             h.class18 = Clean(200 - d)
@@ -71,23 +73,23 @@ class PartProjectGeneratorTypeA:
         db.session.bulk_save_objects(Histo)  # permet de passer de 440ms à 230ms
         db.session.commit()
 
-    def GenerateSample(self, SampleName,Hour) -> database.part_samples:
+    def GenerateSample(self, SampleName, Hour) -> database.part_samples:
         Sample = database.part_samples()
         Sample.pprojid = self.Prj.pprojid
         Sample.profileid = SampleName
-        Sample.firstimage=1
-        Sample.lastimg=999999
+        Sample.firstimage = 1
+        Sample.lastimg = 999999
         Sample.filename = "File" + SampleName
         Sample.latitude = 43.6543
         Sample.longitude = 7.3456
-        Sample.sampledate = datetime(2019, 11, 21,Hour) # utilisé pour faire un nom de fichier unique
+        Sample.sampledate = datetime(2019, 11, 21, Hour)  # utilisé pour faire un nom de fichier unique
         Sample.instrumsn = "sn123456"
         Sample.organizedbydeepth = True
         # Même valeurs que dans le projet ecotaxa
         # Sample.acq_aa = 0.0043
         # Sample.acq_exp = 1.12
         # Autres valeurs pas forcement réalistes mais permet de générer des bru qui remplisses les classes 17 et +
-#        Sample.acq_aa = 0.0006
+        #        Sample.acq_aa = 0.0006
         Sample.acq_aa = 0.0002
         Sample.acq_exp = 1.02
         Sample.acq_volimage = 1.13

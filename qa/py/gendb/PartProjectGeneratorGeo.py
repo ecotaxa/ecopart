@@ -1,17 +1,19 @@
-from appli import db
-from appli.part import database
-import typing, appli, math, logging
+import logging
+import typing
 from datetime import datetime, timedelta
+
+from part_app.app import db
+from part_app.database import part_projects, part_samples
 
 
 class PartProjectGeneratorTypeGeo:
     def __init__(self):
-        self.Prj: typing.Optional[database.part_projects()] = None
+        self.Prj: typing.Optional[part_projects()] = None
         self.pprojid = None
-        self.Zooprojid=None
+        self.Zooprojid = None
 
     def Generate(self, Title, OwnerID=1):
-        self.Prj = database.part_projects()
+        self.Prj = part_projects()
         self.Prj.ptitle = Title
         self.Prj.ownerid = OwnerID
         self.Prj.instrumtype = 'uvp5'
@@ -26,30 +28,31 @@ class PartProjectGeneratorTypeGeo:
         db.session.commit()
         self.pprojid = self.Prj.pprojid
         logging.info(f"Project {self.pprojid} created : {Title}")
-        for i in range(1,90):
-            self.GenerateSample(f"sampleNE{i}",i, i*1.01,-46.1+1.01*i)
-            self.GenerateSample(f"sampleSE{i}",i,-i*1.01,-46.1+1.01*i)
-            self.GenerateSample(f"sampleNW{i}",i, i*1.01,-86.1-1.01*i)
+        for i in range(1, 90):
+            self.GenerateSample(f"sampleNE{i}", i, i * 1.01, -46.1 + 1.01 * i)
+            self.GenerateSample(f"sampleSE{i}", i, -i * 1.01, -46.1 + 1.01 * i)
+            self.GenerateSample(f"sampleNW{i}", i, i * 1.01, -86.1 - 1.01 * i)
             self.GenerateSample(f"sampleSW{i}", i, -i * 1.01, -86.1 - 1.01 * i)
-            self.GenerateSample(f"sampleCirc{i}", i, 30+i * 0.1,  4.01 * i)
+            self.GenerateSample(f"sampleCirc{i}", i, 30 + i * 0.1, 4.01 * i)
 
-    def GenerateSample(self, SampleName,Hour,latitude,longitude) -> database.part_samples:
-        Sample = database.part_samples()
+    def GenerateSample(self, SampleName, Hour, latitude, longitude) -> part_samples:
+        Sample = part_samples()
         Sample.pprojid = self.Prj.pprojid
         Sample.profileid = SampleName
-        Sample.firstimage=1
-        Sample.lastimg=999999
+        Sample.firstimage = 1
+        Sample.lastimg = 999999
         Sample.filename = "File" + SampleName
         Sample.latitude = latitude
         Sample.longitude = longitude
-        Sample.sampledate = datetime(2019, 11, 21)+(timedelta(hours=Hour)) # utilisé pour faire un nom de fichier unique
+        Sample.sampledate = datetime(2019, 11, 21) + (
+            timedelta(hours=Hour))  # utilisé pour faire un nom de fichier unique
         Sample.instrumsn = "sn123456"
         Sample.organizedbydeepth = True
         # Même valeurs que dans le projet ecotaxa
         # Sample.acq_aa = 0.0043
         # Sample.acq_exp = 1.12
         # Autres valeurs pas forcement réalistes mais permet de générer des bru qui remplisses les classes 17 et +
-#        Sample.acq_aa = 0.0006
+        #        Sample.acq_aa = 0.0006
         Sample.acq_aa = 0.0002
         Sample.acq_exp = 1.02
         Sample.acq_volimage = 1.13

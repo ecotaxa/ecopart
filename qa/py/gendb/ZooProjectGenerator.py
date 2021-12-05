@@ -1,4 +1,6 @@
-from appli import db, database, DecodeEqualList
+from Zoo_DB import database
+from part_app.txt_utils import DecodeEqualList
+from part_app.app import db
 import typing
 from gendb.Postgres import SequenceCache
 

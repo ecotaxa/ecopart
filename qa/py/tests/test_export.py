@@ -9,27 +9,37 @@ import re
 import math
 from os.path import dirname, realpath
 from pathlib import Path
-from appli import appli
-from appli import g, db
-from appli.part import database as dbpart
-from utils import TaskInstance, ShowOnWinmerge
+
+from Zoo_backend import BACKEND_PORT, kill_backend, launch_backend
+from part_app import urls, app
+from part_app.app import part_app, db, g
+from part_app.database import part_projects
+from utils import TaskInstance, ShowOnWinmerge, zoo_login
 import zipfile
 
 HERE = Path(dirname(realpath(__file__)))
 DATA_DIR = (HERE / ".." / ".." / "data").resolve()
 REF_EXPORT_DIR = (DATA_DIR / "ref_export")
 
+# Les tests supposent que les data à importer sont là, dans le répertoire "qa/data" qui est indiqué dans les projets
+app.ServerLoadArea = (HERE / '../../..').resolve()
+
 
 @pytest.fixture
 def app():
-    with appli.app.app_context():
+    launch_backend()
+    urls.BACKEND_API_PORT[0] = BACKEND_PORT
+    token = zoo_login("admin", "nimda")
+    assert token is not None
+    with part_app.app_context():
         g.db = None
-        yield appli.app
+        yield part_app
+        kill_backend()
 
 
 @pytest.fixture
 def part_project_uvpapp():
-    part_project = db.session.query(dbpart.part_projects).filter_by(
+    part_project = db.session.query(part_projects).filter_by(
         ptitle="EcoPart TU Project UVP 6 from UVP APP").first()
     if part_project is None:
         pytest.fail("UVPAPP Project Missing")
@@ -38,7 +48,7 @@ def part_project_uvpapp():
 
 @pytest.fixture
 def part_project_uvpbru():
-    part_project = db.session.query(dbpart.part_projects).filter_by(
+    part_project = db.session.query(part_projects).filter_by(
         ptitle="EcoPart TU Project UVP 5 pour load BRU").first()
     if part_project is None:
         pytest.fail("UVP BRU Project Missing")
@@ -47,7 +57,7 @@ def part_project_uvpbru():
 
 @pytest.fixture
 def part_project_uvpremotelambdahttp():
-    part_project = db.session.query(dbpart.part_projects).filter_by(
+    part_project = db.session.query(part_projects).filter_by(
         ptitle="EcoPart TU Project UVP Remote Lambda HTTP").first()
     if part_project is None:
         pytest.fail("UVP remote lambda HTTP Project Missing")
@@ -95,12 +105,13 @@ def checkCompareTSV(data_ref, data_gen, separator_regex=b'\t|;'):
     if len(lignes_r) != len(lignes_g):
         return False
     for (row_r, row_g) in zip(lignes_r, lignes_g):
-        cols_r = re.split(separator_regex,row_r)
-        cols_g = re.split(separator_regex,row_g)
+        cols_r = re.split(separator_regex, row_r)
+        cols_g = re.split(separator_regex, row_g)
         if len(cols_r) != len(cols_g):
             return False
         for (col_r, col_g) in zip(cols_r, cols_g):
-            if col_r.replace(b'.', b'', 1).strip().isdigit() and col_r.replace(b'.', b'', 1).strip().isdigit():  # les deux sont des float
+            if col_r.replace(b'.', b'', 1).strip().isdigit() and col_r.replace(b'.', b'',
+                                                                               1).strip().isdigit():  # les deux sont des float
                 if not math.isclose(float(col_r.strip()), float(col_g.strip()), abs_tol=1e-8):
                     return False
             else:  # pas des chiffres on compare l'égalité des texte
@@ -167,7 +178,7 @@ def check_zip_with_ref(refdirname: str, task, tmpfilename: str, FTPExportAreaFol
     if FTPExportAreaFolter:
         # On a pas l'information du nom de fichier mais il est de la forme task_xx_
         target_file_prefix = "task_%d_" % task.task.id
-        nom_fichier_zip = "Fichier manquand dans FTP export area"
+        nom_fichier_zip = "Fichier manquant dans FTP export area"
         for f in FTPExportAreaFolter.glob(target_file_prefix + "*"):
             nom_fichier_zip = f
     else:
@@ -175,8 +186,14 @@ def check_zip_with_ref(refdirname: str, task, tmpfilename: str, FTPExportAreaFol
     with zipfile.ZipFile(nom_fichier_zip, 'r') as z:
         liste_fichier_zip = z.namelist()
         # s'il y a trop de fichiers dans le zip ça fera une erreur lors de la comparaison de ce fichier
-        assert len(liste_fichier_zip) >= len(liste_fichier_ref), \
-            "Nombre de fichier qui ne correspond pas entre le zip et ref"
+        ref_fichiers = set(liste_fichier_ref)
+        actu_fichiers = set([SupprimeDateTime(f) for f in liste_fichier_zip])
+        manquants = ref_fichiers.difference(actu_fichiers)
+        en_trop = actu_fichiers.difference(ref_fichiers)
+        assert len(en_trop) == 0 and len(manquants) == 0, \
+            "Fichiers en trop dans le zip: %s ou manquants dans le zip: %s" % (str(en_trop), str(manquants))
+        # assert len(liste_fichier_zip) >= len(liste_fichier_ref), \
+        #     "Nombre de fichier qui ne correspond pas entre le zip et ref"
         for nomfichier in z.namelist():
             # print(nomfichier)
             nomfichierref = SupprimeDateTime(nomfichier)
@@ -197,7 +214,7 @@ def check_zip_with_ref(refdirname: str, task, tmpfilename: str, FTPExportAreaFol
                 if 'ZOO_raw' in nomfichierref or 'metadata_sum' in nomfichierref:
                     data_ref = SupprimerColFromTSV(data_ref, b'psampleid')
                     data_gen = SupprimerColFromTSV(data_gen, b'psampleid')
-                cmpresult = checkCompareTSV(data_ref,data_gen)
+                cmpresult = checkCompareTSV(data_ref, data_gen)
                 if not cmpresult:
                     tmp_file = os.path.join(task.GetWorkingDir(), tmpfilename)
                     ref_tmp_file = os.path.join(task.GetWorkingDir(), 'ref_' + tmpfilename)
