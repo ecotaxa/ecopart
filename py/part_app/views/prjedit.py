@@ -20,7 +20,7 @@ from ..urls import PART_URL
 class UvpPrjForm(Form):
     ptitle = StringField("Particle Project title")
     rawfolder = StringField("rawfolder")
-    ownerid = StringField("Project Owner name")
+    ownerid = StringField("Project Manager name")
     projid = StringField("Ecotaxa Project")
     instrumtype = StringField("Instrument type")
     op_name = StringField("Operator name")
@@ -70,7 +70,7 @@ def part_prjedit(pprojid):
         model.public_partexport_deferral_month = part_app.config.get('PART_DEFAULT_GENERAL_EXPORT_DELAY', '')
         model.public_zooexport_deferral_month = part_app.config.get('PART_DEFAULT_PLANKTON_EXPORT_DELAY', '')
 
-    UvpPrjForm.ownerid = SelectField('Project Owner',
+    UvpPrjForm.ownerid = SelectField('Project Manager',
                                      choices=GetAll("SELECT id,name FROM users ORDER BY trim(lower(name))"),
                                      coerce=int)
     UvpPrjForm.instrumtype = SelectField('Instrument type',
