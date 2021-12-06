@@ -98,7 +98,7 @@ class AsyncTask:
         db.session.commit()
 
         # Get request cookie for session transmission
-        cookie = request.cookies.get('session')
+        cookie = request.cookies.get(ECOTAXA_COOKIE)
         if cookie is not None:
             os.environ[self.ECOTAXA_COOKIE] = cookie
         workingdir = self.GetWorkingDir()

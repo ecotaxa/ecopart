@@ -45,6 +45,9 @@ class TaskPartZooscanImport(AsyncTask):
 
     def SPStep1(self):
         ecotaxa_if = EcoTaxaInstance(self.cookie)
+        ecotaxa_user = ecotaxa_if.get_current_user()
+        if ecotaxa_user is None:
+            logging.error("NO VALID EcoTaxa USER :%s", self.cookie)
         logging.info("Input Param = %s" % (self.param.__dict__))
         logging.info("Start Step 1")
         Prj = partdatabase.part_projects.query.filter_by(pprojid=self.param.pprojid).first()

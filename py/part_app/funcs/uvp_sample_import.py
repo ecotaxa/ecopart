@@ -766,6 +766,7 @@ def GenerateParticleHistogram(psampleid):
     else:
         part_esd = part_tranche[:, 1]
         part_bv = part_tranche[:, 2]
+        sav_part_tranche = part_tranche
         part_tranche = part_tranche[:, 0]
     (PartByClassAndTranche, bins, binsdept) = \
         np.histogram2d(part_esd, part_tranche,
@@ -857,6 +858,7 @@ def GenerateParticleHistogram(psampleid):
             ax.set_yticks(GetTicks(volume_par_tranche.max()))
             ax.set_ylabel('Volume')
     else:
+        part_tranche = sav_part_tranche
         if uvp_sample.organizedbydeepth:
             # calcul volume par metre moyen de chaque tranche
             ax = fig.add_subplot(241)
