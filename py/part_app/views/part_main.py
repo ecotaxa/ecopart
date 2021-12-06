@@ -72,12 +72,15 @@ def _GetSQLVisibility(ecotaxa_if: EcoTaxaInstance):
     # Détermination du droit pour le projet EcoPart
     sql_case = []
     if ecotaxa_user is not None:
+        ecotaxa_user_id = ecotaxa_user.id
         if 2 in ecotaxa_user.can_do:
             # Administrateur EcoTaxa
             sql_case.append(" when true then 'Y' ")
         else:
             # Utilisateur EcoTaxa ayant crée le projet EcoPart
-            sql_case.append(" when pp.ownerid=%d then 'Y' " % ecotaxa_user.id)
+            sql_case.append(" when pp.ownerid=%d then 'Y' " % ecotaxa_user_id)
+    else:
+        ecotaxa_user_id = None
     # Règles de visibilité par date
     sql_case.append(""" when """ + SQL_PART_PRJ_VISIBLE + """ 
                           and """ + SQL_PART_PRJ_EXPORTABLE + """  
@@ -86,7 +89,7 @@ def _GetSQLVisibility(ecotaxa_if: EcoTaxaInstance):
                          then 'V' """)
     sql_case.append(" else 'N' ")
 
-    sqlvisible = "case " + "".join(sql_case) + "end"
+    sqlvisible = "case " + "".join(sql_case) + "end || case when " + SQL_ZOO_PRJ_EXPORTABLE + " then 'Y' else 'N' end "
     #
     # CODE PRECEDENT AU CAS OU
     #
@@ -122,7 +125,7 @@ def _GetSQLVisibility(ecotaxa_if: EcoTaxaInstance):
     #     sqlvisible += """ when """ + SQL_PART_PRJ_VISIBLE + """
     #                       then case when p.visible then 'VV' else 'VN' end  """
     #     sqlvisible += " else 'NN' end "
-    return sqlvisible
+    return sqlvisible, ecotaxa_user_id
 
 
 # Retourne la liste des samples correspondant à un des filtres.
@@ -136,8 +139,8 @@ def GetFilteredSamples(ecotaxa_if: EcoTaxaInstance, Filter=None, GetVisibleOnly=
     sqlparam = {}
     if Filter is None:  # si filtre non spécifié on utilise GET
         Filter = request.args
-    sqlvisible = _GetSQLVisibility(ecotaxa_if)
-    sql = "select s.psampleid, s.latitude, s.longitude, cast (" + sqlvisible + """ as varchar(2) ) as visibility, 
+    sqlvisible, ecotaxa_user_id = _GetSQLVisibility(ecotaxa_if)
+    sql = "select s.psampleid, s.latitude, s.longitude, " + sqlvisible + """ as visibility, false as visible,
             s.profileid, s.pprojid, s.sampleid, pp.ptitle, pp.projid
             from part_samples s
             join part_projects pp on s.pprojid = pp.pprojid """
@@ -172,25 +175,30 @@ def GetFilteredSamples(ecotaxa_if: EcoTaxaInstance, Filter=None, GetVisibleOnly=
         sql += " and organizedbydeepth = %s " % (
             True if Filter.get("filt_proftype", '' if ForceVerticalIfNotSpecified == False else 'V') == 'V' else False)
 
-    sql = """select s.*, case when substr(visibility,1,1)>='%s' then true end as visible from (%s) s """ % \
-          (MinimumPartVisibility, sql)
-    if GetVisibleOnly:
-        sql = "select * from (" + sql + ") s where visible=true "
+    # On ne peut pas filtrer la visibilité déjà, puisque le lien vers EcoTaxa peut surcharger la règle
     sql += """ order by s.psampleid     """
     ret = GetAll(sql, sqlparam)
 
     # Enrichissement avec les infos des projets EcoTaxa
     visible_prjs = ecotaxa_if.get_visible_projects()
-    visible_prjids = set([prj.projid for prj in visible_prjs])
+    visible_prjs_by_id = {prj.projid: prj for prj in visible_prjs}
     for a_line in ret:
+        # TODO: Les permissions sont une constante par project, pas la peine de refaire pour chaque sample
         ecotaxa_prjid = a_line["projid"]
-        ecotaxa_proj_visible = 'Y' if ecotaxa_prjid in visible_prjids \
-            else 'V' if ecotaxa_prjid is None \
-            else 'N'
-        a_line["visibility"] += ecotaxa_proj_visible
-        # On peut simplifier, mais comme ça on voit la similarité avec le test SQL + haut
-        if not (ecotaxa_proj_visible >= MinimumZooVisibility):
-            a_line["visible"] = False
+        ecotaxa_prj = visible_prjs_by_id.get(ecotaxa_prjid)
+        part_visibility, zoo_visibility = a_line["visibility"]
+        if ecotaxa_prj is not None:
+            zoo_visibility = 'V'
+            # Si l'utilisateur peut modifier le projet EcoTaxa, on lui accorde les droits sur le projet EcoPart
+            prj_writers = set([usr.id for usr in ecotaxa_prj.managers])
+            prj_writers.update([usr.id for usr in ecotaxa_prj.annotators])
+            if ecotaxa_user_id in prj_writers:
+                part_visibility = 'Y'
+        else:
+            if ecotaxa_prjid is None:
+                zoo_visibility = 'V'  # Convention pure, il n'y a rien donc on peut le voir...
+        a_line["visibility"] = part_visibility + zoo_visibility
+        a_line["visible"] = (part_visibility >= MinimumPartVisibility) and (zoo_visibility >= MinimumZooVisibility)
     # Re-filtrage si voulu
     if GetVisibleOnly:
         ret = [a_line for a_line in ret
