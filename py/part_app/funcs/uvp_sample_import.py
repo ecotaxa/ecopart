@@ -16,14 +16,14 @@ import numpy as np
 from .. import database as partdatabase, app
 from ..app import part_app, db, VaultRootDir
 from ..constants import PartDetClassLimit
-from ..db_utils import ExecSQL, GetAssoc
+from ..db_utils import ExecSQL, GetAssoc, GetAll
 from ..fs_utils import CreateDirConcurrentlyIfNeeded
 from ..funcs.common_sample_import import CleanValue, ToFloat, GetTicks, GenerateReducedParticleHistogram
 from ..prod_or_dev import DEV_BEHAVIOR
 from ..remote import EcoTaxaInstance
 from ..tasks.importcommon import ConvTextDegreeDotMinuteToDecimalDegree, calcpixelfromesd_aa_exp
 from ..txt_utils import DecodeEqualList
-
+import psycopg2.extras
 
 def CreateOrUpdateSample(pprojid, headerdata):
     """
@@ -1085,36 +1085,104 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
     if depth_offset is None:
         depth_offset = 0
 
-    queried_columns = ["obj.classif_id", "obj.classif_qual", "obj.depth_min", "fre.area"]
-    api_res = ecotaxa_if.get_objects_for_sample(zoo_proj.projid, uvp_sample.sampleid, queried_columns,
-                                                only_validated=True)
-    # Do some calculations/filtering for returned data
-    res = []
-    for an_obj in api_res:
-        if an_obj["classif_id"] is None or an_obj["depth_min"] is None or an_obj["area"] is None:
-            continue
-        an_obj["tranche"] = int((an_obj["depth_min"] + depth_offset) / 5)
-        res.append(an_obj)
+    # select classif_id,depth_min depth,objdate+objtime objdatetime,{areacol} areacol
+    if DEV_BEHAVIOR:
+        def GetObjectsForTaxoHistoCompute(prj, sampleid):
+            # """
+            # select classif_id,depth_min depth,objdate+objtime objdatetime,{areacol} areacol
+            # from objects
+            # join acquisitions on objects.acquisid=acquisitions.acquisid
+            # WHERE acq_sample_id={sampleid} and classif_id is not NULL and depth_min is not NULL
+            # and {areacol} is not NULL and classif_qual='V'
+            # """.format(sampleid=eco_sampleid, areacol=areacol), None, False, psycopg2.extras.RealDictCursor)
+            queried_columns = ["obj.classif_id", "obj.classif_qual", "obj.depth_min",
+                               "obj.objdate", "obj.objtime", "fre.area"]
+            api_res = ecotaxa_if.get_objects_for_sample(prj.projid, sampleid, queried_columns,
+                                                        only_validated=True)
+            # Do some calculations/filtering for returned data
+            ret = []
+            for an_obj in api_res:
+                if an_obj["classif_id"] is None or an_obj["depth_min"] is None \
+                        or an_obj["area"] is None:
+                    continue
+                an_obj["objdatetime"] = None
+                if an_obj["objdate"] is not None and an_obj["objtime"] is not None:
+                    # Les dates sont textuelles en sortant de l'API
+                    # TODO
+                    an_obj["objdatetime"] = datetime.datetime(1987, 1, 1)
+                ret.append(an_obj)
+            return ret
+
+        epoch0 = 0
+        if uvp_sample.organizedbydeepth:
+            lst_vol = GetAssoc("""select cast(round((depth-2.5)/5) as INT) tranche,watervolume 
+            from part_histopart_reduit where psampleid=%s""" % psampleid)
+            lst_taxo_det = GetObjectsForTaxoHistoCompute(prj, uvp_sample.sampleid)
+            for obj in lst_taxo_det:
+                obj['tranche'] = math.floor((obj['depth_min'] + depth_offset) / 5)
+        else:
+            lst_voldb = GetAll("""select distinct datetime
+                                                ,watervolume 
+                                            from part_histopart_reduit 
+                                            where psampleid=%s""" % psampleid, None, False,
+                                        psycopg2.extras.RealDictCursor)
+            lst_vol = {}
+            for vol in lst_voldb:
+                tranche = int(math.floor(vol['datetime'].timestamp() / 3600))
+                lst_vol[tranche] = vol['watervolume']
+            if len(lst_vol.keys()) > 0:
+                epoch0 = min(lst_vol.keys())
+            lst_vol = {k - epoch0: {'tranche': k - epoch0, 'watervolume': v} for (k, v) in lst_vol.items()}
+            lst_taxo_det = GetObjectsForTaxoHistoCompute(prj, uvp_sample.sampleid)
+            for obj in lst_taxo_det:
+                if obj['objdatetime']:
+                    obj['tranche'] = math.floor(obj['objdatetime'].timestamp() / 3600) - epoch0
+                    obj['datetimetranche'] = obj['objdatetime'].strftime("%Y%m%d %H:30:00")
+                else:
+                    obj['tranche'] = 0
+                    obj['datetimetranche'] = ""
+    else:
+        queried_columns = ["obj.classif_id", "obj.classif_qual", "obj.depth_min", "fre.area"]
+        api_res = ecotaxa_if.get_objects_for_sample(zoo_proj.projid, uvp_sample.sampleid, queried_columns,
+                                                    only_validated=True)
+        # Do some calculations/filtering for returned data
+        lst_taxo_det = []
+        for an_obj in api_res:
+            if an_obj["classif_id"] is None or an_obj["depth_min"] is None or an_obj["area"] is None:
+                continue
+            an_obj["tranche"] = int((an_obj["depth_min"] + depth_offset) / 5)
+            lst_taxo_det.append(an_obj)
 
     lst_taxo = {}
-    for r in res:
+    for r in lst_taxo_det:
         # On aggrège par catégorie+tranche d'eau
         cle = "{}/{}".format(r['classif_id'], r['tranche'])
         if cle not in lst_taxo:
             lst_taxo[cle] = {'nbr': 0, 'esdsum': 0, 'bvsum': 0, 'classif_id': r['classif_id'], 'tranche': r['tranche']}
+            if DEV_BEHAVIOR:
+                if not uvp_sample.organizedbydeepth:
+                    lst_taxo[cle]['datetimetranche'] = r['datetimetranche']
         lst_taxo[cle]['nbr'] += 1
         esd = 2 * math.sqrt(r['area'] * (pixel ** 2) / math.pi)
         lst_taxo[cle]['esdsum'] += esd
         biovolume = pow(esd / 2, 3) * 4 * math.pi / 3
         lst_taxo[cle]['bvsum'] += biovolume
 
-    lst_vol = GetAssoc("""select cast(round((depth-2.5)/5) as INT) tranche, watervolume 
-    from part_histopart_reduit 
-    where psampleid=%s""" % psampleid)
+    if DEV_BEHAVIOR:
+        pass
+    else:
+        lst_vol = GetAssoc("""select cast(round((depth-2.5)/5) as INT) tranche, watervolume 
+        from part_histopart_reduit 
+        where psampleid=%s""" % psampleid)
     ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
     ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
-    sql = """insert into part_histocat(psampleid, classif_id, lineno, depth, watervolume, nbr, avgesd, totalbiovolume)
-            values({psampleid},{classif_id},{lineno},{depth},{watervolume},{nbr},{avgesd},{totalbiovolume})"""
+    if DEV_BEHAVIOR:
+        sql = "insert into " + \
+              "part_histocat(psampleid, classif_id, lineno, depth,datetime, watervolume, nbr, avgesd, totalbiovolume)" \
+              "  values({psampleid},{classif_id},{lineno},{depth},{datetime},{watervolume},{nbr},{avgesd},{totalbiovolume})"
+    else:
+        sql = """insert into part_histocat(psampleid, classif_id, lineno, depth, watervolume, nbr, avgesd, totalbiovolume)
+                values({psampleid},{classif_id},{lineno},{depth},{watervolume},{nbr},{avgesd},{totalbiovolume})"""
     # 0 Taxoid, tranche
     for r in lst_taxo.values():
         avgesd = r['esdsum'] / r['nbr']
