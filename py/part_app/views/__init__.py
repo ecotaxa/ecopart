@@ -1,4 +1,5 @@
-__all__ = ["drawchart", "sampleedit", "prjedit", "prj", "part_main", "filesystem", "security", "taxo"]
+__all__ = ["drawchart", "sampleedit", "prjedit", "prj", "part_main", "filesystem", "security", "taxo",
+           "part_PrintInCharte"]
 
 from flask import render_template, g
 

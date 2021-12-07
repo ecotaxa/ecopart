@@ -10,7 +10,7 @@ class ZooProjectGenerator:
         self.TaxoCache = {}
         self.projid = None
         self.Prj: typing.Optional[database.Projects] = None
-        self.Acquisid=None
+        self.Acquisid = None
         self.Acq: typing.Optional[database.Acquisitions] = None
         # exemple de valeurs utilisée, issues d'un UVP5 HD project Celter 2019
         self.aa = 0.0043
@@ -22,7 +22,7 @@ class ZooProjectGenerator:
         self.RevMapAcq = {}  # Mapping Data=>ChampDb
         self.RevMapObj = {}
         self.obj_seq_cache = SequenceCache(db.session, "seq_objects", 500)
-        self.bulk_obj=[]
+        self.bulk_obj = []
         self.bulk_objF = []
 
         self.mappingprocess = """t01=software
@@ -165,13 +165,12 @@ t17=exposure"""
         db.session.commit()
         self.projid = self.Prj.projid
 
-        ProjPriv=database.ProjectsPriv()
-        ProjPriv.projid=self.projid
-        ProjPriv.member=OwnerID
-        ProjPriv.privilege="Manage"
+        ProjPriv = database.ProjectsPriv()
+        ProjPriv.projid = self.projid
+        ProjPriv.member = OwnerID
+        ProjPriv.privilege = "Manage"
         db.session.add(ProjPriv)
         db.session.commit()
-
 
         self.MapAcq = DecodeEqualList(self.mappingacq)
         self.MapObj = DecodeEqualList(self.mappingobj)
@@ -190,8 +189,7 @@ t17=exposure"""
         # db.session.commit() # Le commit intermediaire n'as pas d'impact sur le perf
         # Version differente qui prend des dictionnaires au lieu d'objets, pas d'impact significatif en terme de perf
         # Je laisse les 2 approches pour info parfois manipuler un dictionnaire pourrait être plus simple qu'un objet
-        db.session.bulk_insert_mappings(database.ObjectsFields,self.bulk_objF,)
+        db.session.bulk_insert_mappings(database.ObjectsFields, self.bulk_objF, )
         db.session.commit()
-        self.bulk_obj=[]
+        self.bulk_obj = []
         self.bulk_objF = []
-

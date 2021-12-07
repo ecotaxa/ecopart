@@ -3,6 +3,7 @@
 #
 import os
 import subprocess
+import time
 from os.path import dirname, realpath
 from pathlib import Path
 
@@ -39,8 +40,7 @@ def launch_backend():
     backend_proc = subprocess.Popen(args=args, env=env, shell=False, cwd=working_dir,
                                     universal_newlines=True, stdout=out_file, stderr=subprocess.STDOUT)
     # OK en théorie il faudrait attendre que le port soit UP
-    import time
-    time.sleep(5)
+    time.sleep(3)
 
 
 def kill_backend():
@@ -48,11 +48,13 @@ def kill_backend():
         if "Started" in a_line and "process" in a_line:
             child_pid = int(a_line.split("[")[1].split("]")[0])
             os.kill(child_pid, 5)
+    # OK en théorie il faudrait attendre que les process disparaissent
+    time.sleep(3)
 
 
 if __name__ == '__main__':
     launch_backend()
-    import time;
+    import time
 
     time.sleep(5)
     kill_backend()

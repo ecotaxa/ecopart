@@ -98,8 +98,11 @@ def check_ZooSampleT1(psampleid: int):
             dataraw.items()}
     # print(data) # pour génerer la variable ref
     ref = data_taxho_histo_sampleT1
-    assert len(ref) == len(data)
+    missing = {}
     for k, r in ref.items():
+        if k not in data:
+            missing[k] = r
+            continue
         if r['depth'] is None:
             assert data[k]['depth'] is None
         else:
@@ -109,6 +112,8 @@ def check_ZooSampleT1(psampleid: int):
         assert r['nbr'] == pytest.approx(data[k]['nbr'])
         assert r['avgesd'] == pytest.approx(data[k]['avgesd'])
         assert r['totalbiovolume'] == pytest.approx(data[k]['totalbiovolume'])
+
+    assert len(missing) == 0, "missing: %s" % str(missing)
 
 
 # def test_temp(app):
@@ -166,7 +171,7 @@ def test_import_uvp6_uvpapp(app, caplog, tmpdir):
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
         sample1_ref = db.session.query(part_samples).filter_by(pprojid=part_project_ref.pprojid,
-                                                                      profileid="sample01").first()
+                                                               profileid="sample01").first()
         sample1 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="uvpappsample01").first()
         sample_t1 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="uvpappsampleT1").first()
         sample2 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="uvpappsample02").first()
@@ -222,7 +227,7 @@ def test_import_uvp5_BRU(app, caplog, tmpdir):
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
         sample1_ref = db.session.query(part_samples).filter_by(pprojid=part_project_ref.pprojid,
-                                                                      profileid="sample01").first()
+                                                               profileid="sample01").first()
         sample1 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="brusample01").first()
 
         reffile = tmpdir.join("reffile.txt")
@@ -269,7 +274,7 @@ def test_import_uvp5_BRU1(app, caplog, tmpdir):
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
         sample1_ref = db.session.query(part_samples).filter_by(pprojid=part_project_ref.pprojid,
-                                                                      profileid="sample01").first()
+                                                               profileid="sample01").first()
         sample1 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="bru1sample01").first()
 
         reffile = tmpdir.join("reffile.txt")
@@ -310,9 +315,9 @@ def test_import_lisst(app, caplog, tmpdir):
         T.RunTask()
         sample1 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="lisstsample01").first()
         # On controle le total biovolume avec quelques PB
-        #  sur le lisst on a pas les watervolume associés on fait donc la some des concentrations (qui dans l'abosolu
-        #  n'as pas de sens puisqu'il y a le même nombre de ligne dans l'histograme
-        # les classe du LISST ne sont pas les même il y a des mécanisme de ventilation proportionnelle dans les classe
+        #  sur le lisst on n'a pas les watervolume associés on fait donc la some des concentrations (qui dans l'absolu
+        #  n'a pas de sens puisqu'il y a le même nombre de ligne dans l'histogramme
+        # les classes du LISST ne sont pas les mêmes il y a des mécanismes de ventilation proportionnelle dans les classes
         # EcoPart il faut donc regrouper certaines classes pour les comparer avec un import UVP
         sql = """select sum(biovol17) biovol17raw
                         ,sum(biovol18+biovol19+biovol20) biovol18_20raw
@@ -330,9 +335,9 @@ def test_import_lisst(app, caplog, tmpdir):
         check_CtdValues(sample3.psampleid, 2)
 
 
-# @pytest.fixture
-# def httpserver_listen_address():
-#     return "127.0.0.1", 5050
+@pytest.fixture(scope="session")
+def httpserver_listen_address():
+    return "127.0.0.1", 5050
 
 
 def HttpServeurStaticHandler(req) -> Response:
@@ -386,7 +391,7 @@ def test_import_uvp_remote_lambda_http(app, caplog, tmpdir, httpserver: HTTPServ
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
         sample1_ref = db.session.query(part_samples).filter_by(pprojid=part_project_ref.pprojid,
-                                                                      profileid="sample01").first()
+                                                               profileid="sample01").first()
         sample1 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="lambdasample01").first()
         sample_t1 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="lambdasampleT1").first()
         sample2 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="lambdasample02").first()
@@ -415,10 +420,15 @@ def test_import_uvp_remote_lambda_http(app, caplog, tmpdir, httpserver: HTTPServ
             check_sampleTypeAkeyValues(sampleid, CompareBiovolumePart=False, CompareZoo=False, NbrImage=3, Coeff=0.8)
 
 
+FTP_PORT = 2100  # Pas de port 21 pour les utilisateurs ordinaires sous Linux
+
+# Configuration du serveur FTP de pytest
 os.environ["FTP_USER"] = "MyUser"
 os.environ["FTP_PASS"] = "MyPassword"
-os.environ["FTP_PORT"] = "21"
+os.environ["FTP_PORT"] = str(FTP_PORT)
 os.environ["FTP_HOME"] = DATA_DIR.as_posix()
+
+RemoteServerFetcher.FTP_PORT = FTP_PORT
 
 
 # noinspection DuplicatedCode
@@ -429,7 +439,7 @@ def test_import_uvp_remote_lambda_ftp(app, caplog, tmpdir, ftpserver: PytestLoca
     # print(ftpserver.get_login_data())
     # test du bon fonctionnement du serveur FTP
     ftp = FTP()
-    ftp.connect("127.0.0.1")
+    ftp.connect("127.0.0.1", FTP_PORT)
     ftp.login("MyUser", "MyPassword")
     ftp.cwd('tu1_uvp6remotelambda')
     lstfichiers = ftp.nlst()
@@ -438,7 +448,7 @@ def test_import_uvp_remote_lambda_ftp(app, caplog, tmpdir, ftpserver: PytestLoca
     ftp.close()
     # return
 
-    # Test de la fonction Remote FTP, l'ensemble des test est commun à la version FTP, seule la récupératind des
+    # Test de la fonction Remote FTP, l'ensemble des test est commun à la version FTP, seule la récupération des
     # fichiers est différente
     caplog.set_level(logging.DEBUG)  # pour mise au point
     caplog.set_level(logging.CRITICAL)  # pour execution très silencieuse
@@ -468,7 +478,7 @@ def test_import_uvp_remote_lambda_ftp(app, caplog, tmpdir, ftpserver: PytestLoca
         if part_project_ref is None:
             pytest.fail("BRU Ref Project Missing")
         sample1_ref = db.session.query(part_samples).filter_by(pprojid=part_project_ref.pprojid,
-                                                                      profileid="sample01").first()
+                                                               profileid="sample01").first()
         sample1 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="lambdasample01").first()
         sample_t1 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="lambdasampleT1").first()
         sample2 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="lambdasample02").first()

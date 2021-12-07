@@ -3,21 +3,22 @@ import csv
 import logging
 import re
 import time
-from pathlib import Path
 
 from flask import render_template, flash, request, g
 
 from .taskmanager import AsyncTask, DoTaskClean
-from .. import database as partdatabase, app
-from ..app import part_app, db
+from .. import app
 from ..constants import LstInstrumType
+from ..database import part_projects
 from ..db_utils import GetAssoc
 from ..funcs import histograms
 from ..funcs import uvp_sample_import, lisst_sample_import, common_sample_import, uvp6remote_sample_import, nightly
 from ..http_utils import gvg, gvp, ErrorFormat
+from ..prod_or_dev import DEV_BEHAVIOR
 from ..remote import EcoTaxaInstance
 from ..urls import PART_URL
-from ..views import prj, part_PrintInCharte
+from ..views import part_PrintInCharte
+from ..views.prj import ComputeZooMatch
 
 
 class TaskPartZooscanImport(AsyncTask):
@@ -35,7 +36,7 @@ class TaskPartZooscanImport(AsyncTask):
 
     def __init__(self, task=None):
         super().__init__(task)
-        if task == None:
+        if task is None:
             self.param = self.Params()
         else:
             self.param = self.Params(task.inputparam)
@@ -50,75 +51,80 @@ class TaskPartZooscanImport(AsyncTask):
             logging.error("NO VALID EcoTaxa USER :%s", self.cookie)
         logging.info("Input Param = %s" % (self.param.__dict__))
         logging.info("Start Step 1")
-        Prj = partdatabase.part_projects.query.filter_by(pprojid=self.param.pprojid).first()
-        if Prj.instrumtype == 'uvp6remote':
-            RSF = uvp6remote_sample_import.RemoteServerFetcher(int(self.param.pprojid))
-            LstSample = []
+        prj = part_projects.query.filter_by(pprojid=self.param.pprojid).first()
+        if prj.instrumtype == 'uvp6remote':
+            rsf = uvp6remote_sample_import.RemoteServerFetcher(int(self.param.pprojid))
+            lst_sample = []
             for sample in self.param.profilelistinheader:
                 if self.param.profiletoprocess.get(sample['profileid']):
-                    LstSample.append(sample['profileid'])
-            print(LstSample)
-            LstSampleID = RSF.FetchServerDataForProject(LstSample)
-            print(LstSampleID)
+                    lst_sample.append(sample['profileid'])
+            # print(LstSample)
+            lst_sample_id = rsf.FetchServerDataForProject(lst_sample)
+            # print(LstSampleID)
             if not self.param.ProcessOnlyMetadata:
-                for psampleid in LstSampleID:
+                for psampleid in lst_sample_id:
                     logging.info(
                         "uvp6remote Sample %d Metadata processed, Détailled histogram in progress" % (psampleid,))
                     uvp6remote_sample_import.GenerateParticleHistogram(psampleid)
-                    uvp6remote_sample_import.GenerateTaxonomyHistogram(psampleid)
+                    uvp6remote_sample_import.GenerateTaxonomyHistogram(ecotaxa_if, psampleid)
 
         else:  # process normal par traitement du repertoire des données
-            Nbr = 0
+            nbr = 0
             for sample in self.param.profilelistinheader:
                 if self.param.profiletoprocess.get(sample['profileid']):
-                    Nbr += 1
-            if Nbr == 0: Nbr = 1  # pour éviter les div / 0
-            NbrDone = 0
+                    nbr += 1
+            if nbr == 0: nbr = 1  # pour éviter les div / 0
+            nbr_done = 0
             for sample in self.param.profilelistinheader:
                 if self.param.profiletoprocess.get(sample['profileid']):
                     logging.info("Process profile %s " % (sample['profileid']))
-                    if Prj.instrumtype in ('uvp5', 'uvp6'):
+                    if prj.instrumtype in ('uvp5', 'uvp6'):
                         psampleid = uvp_sample_import.CreateOrUpdateSample(self.param.pprojid, sample)
-                    if Prj.instrumtype == 'lisst':
+                    if prj.instrumtype == 'lisst':
                         psampleid = lisst_sample_import.CreateOrUpdateSample(self.param.pprojid,
                                                                              sample)
-                    self.UpdateProgress(100 * (NbrDone + 0.1) / Nbr,
+                    self.UpdateProgress(100 * (nbr_done + 0.1) / nbr,
                                         "Metadata of profile %s  processed" % (sample['profileid']))
 
                     if not self.param.ProcessOnlyMetadata:
-                        if Prj.instrumtype in ('uvp5', 'uvp6'):
+                        if prj.instrumtype in ('uvp5', 'uvp6'):
+                            # noinspection PyUnboundLocalVariable
                             logging.info("UVP Sample %d Metadata processed, Raw histogram in progress" % (psampleid,))
                             uvp_sample_import.GenerateRawHistogram(psampleid)
-                            self.UpdateProgress(100 * (NbrDone + 0.6) / Nbr,
-                                                "Raw histogram of profile %s  processed, Particle histogram in progress" % (
-                                                    sample['profileid']))
-                            uvp_sample_import.GenerateParticleHistogram(psampleid)
-                            self.UpdateProgress(100 * (NbrDone + 0.7) / Nbr,
-                                                "Particle histogram of profile %s  processed, CTD in progress" % (
-                                                    sample['profileid']))
-                        if Prj.instrumtype == 'lisst':
+                            self.UpdateProgress(100 * (nbr_done + 0.6) / nbr,
+                                                "Raw histogram of profile %s  processed, Particle histogram in progress"
+                                                % (sample['profileid']))
+                            self.UpdateProgress(100 * (nbr_done + 0.7) / nbr,
+                                                "Particle histogram of profile %s  processed, CTD in progress"
+                                                % (sample['profileid']))
+                        if prj.instrumtype == 'lisst':
                             logging.info(
                                 "LISST Sample %d Metadata processed, Particle histogram in progress" % (psampleid,))
-                            lisst_sample_import.GenerateParticleHistogram(psampleid)
-                            self.UpdateProgress(100 * (NbrDone + 0.7) / Nbr,
-                                                "Detailed histogram of profile %s  processed, CTD histogram in progress" % (
-                                                    sample['profileid']))
+                            if DEV_BEHAVIOR:
+                                lisst_sample_import.GenerateRawHistogram(psampleid)
+                            else:
+                                lisst_sample_import.GenerateParticleHistogram(psampleid)
+                            self.UpdateProgress(100 * (nbr_done + 0.7) / nbr,
+                                                "Detailed histogram of profile %s  processed, CTD histogram in progress"
+                                                % (sample['profileid']))
 
-                        if Prj.instrumtype in ('uvp5', 'uvp6', 'lisst'):
+                        if prj.instrumtype in ('uvp5', 'uvp6', 'lisst'):
                             common_sample_import.ImportCTD(psampleid, self.param.user_name,
                                                            self.param.user_email)
-                            self.UpdateProgress(100 * (NbrDone + 0.95) / Nbr,
+                            self.UpdateProgress(100 * (nbr_done + 0.95) / nbr,
                                                 "CTD of profile %s  processed" % (sample['profileid']))
 
-                    histograms.ComputeHistoDet(psampleid, Prj.instrumtype)
-                    histograms.ComputeHistoRed(psampleid)
-                    if Prj.projid is not None:  # on essaye de matcher que si on a un projet Ecotaxa
-                        match_result, sampleid = prj.ComputeZooMatch(ecotaxa_if, psampleid, Prj.projid)
+                    result = histograms.ComputeHistoDet(psampleid, prj.instrumtype)
+                    logging.info(result)
+                    result = histograms.ComputeHistoRed(psampleid)
+                    logging.info(result)
+                    if prj.projid is not None:  # on essaye de matcher que si on a un projet Ecotaxa
+                        match_result, sampleid = ComputeZooMatch(ecotaxa_if, psampleid, prj.projid)
                         if sampleid is None:
                             logging.info("Could not match (%s)", match_result)
-                        histograms.ComputeZooHisto(ecotaxa_if, psampleid, Prj.instrumtype)
+                        histograms.ComputeZooHisto(ecotaxa_if, psampleid, prj.instrumtype)
 
-                    NbrDone += 1
+                    nbr_done += 1
 
         nightly.ComputeOldestSampleDateOnProject()
         self.task.taskstate = "Done"
@@ -133,21 +139,21 @@ class TaskPartZooscanImport(AsyncTask):
         txt = "<h1>Particle ZooScan folder Importation Task</h1>"
         errors = []
         txt += "<h3>Task Creation</h3>"
-        Prj = partdatabase.part_projects.query.filter_by(pprojid=gvg("p")).first()
-        if Prj is None:
+        prj = part_projects.query.filter_by(pprojid=gvg("p")).first()
+        if prj is None:
             return part_PrintInCharte(ecotaxa_if, ErrorFormat("This project doesn't exist"))
-        if Prj.instrumtype not in LstInstrumType:
+        if prj.instrumtype not in LstInstrumType:
             return part_PrintInCharte(ecotaxa_if, ErrorFormat(
-                "Instrument type '%s' not in list : %s" % (Prj.instrumtype, ','.join(LstInstrumType))))
-        g.prjtitle = Prj.ptitle
-        g.prjprojid = Prj.pprojid
-        # g.prjowner=Prj.owneridrel.name
-        DossierUVPPath = ServerRoot / Prj.rawfolder
+                "Instrument type '%s' not in list : %s" % (prj.instrumtype, ','.join(LstInstrumType))))
+        g.prjtitle = prj.ptitle
+        g.prjprojid = prj.pprojid
+        # g.prjowner=prj.owneridrel.name
+        DossierUVPPath = ServerRoot / prj.rawfolder
         self.param.DossierUVP = DossierUVPPath.as_posix()
 
         txt = ""
         # TODO gestion sécurité
-        # if Prj.CheckRight(2)==False:
+        # if prj.CheckRight(2)==False:
         #     return PrintInCharte("ACCESS DENIED for this project");
         self.param.pprojid = gvg("p")
         dbsample = GetAssoc("""select profileid,psampleid,filename,stationid,firstimage,lastimg,lastimgused,comment,histobrutavailable
@@ -155,13 +161,13 @@ class TaskPartZooscanImport(AsyncTask):
               ,(select count(*) from part_histopart_reduit where psampleid=s.psampleid) nbrlinereduit
               ,(select count(*) from part_histocat where psampleid=s.psampleid) nbrlinetaxo
               from part_samples s
-              where pprojid=%s""" % (self.param.pprojid))
+              where pprojid=%s""" % self.param.pprojid)
 
-        if Prj.instrumtype == 'uvp6remote':
-            RSF = uvp6remote_sample_import.RemoteServerFetcher(int(self.param.pprojid))
-            Samples = RSF.GetServerFiles()
-            # print(Samples)
-            for SampleName, Sample in Samples.items():
+        if prj.instrumtype == 'uvp6remote':
+            rsf = uvp6remote_sample_import.RemoteServerFetcher(int(self.param.pprojid))
+            samples = rsf.GetServerFiles()
+            # print(samples)
+            for SampleName, Sample in samples.items():
                 r = {'profileid': SampleName, 'filename': Sample['files']['LPM'], 'psampleid': None}
                 if r['profileid'] in dbsample:
                     r['psampleid'] = dbsample[r['profileid']]['psampleid']
@@ -173,21 +179,22 @@ class TaskPartZooscanImport(AsyncTask):
                 self.param.profilelistinheader = sorted(self.param.profilelistinheader, key=lambda r: r['profileid'])
 
         else:
-            DirName = DossierUVPPath.name
-            m = re.search(R"([^_]+)_(.*)", DirName)
+            dir_name = DossierUVPPath.name
+            m = re.search(R"([^_]+)_(.*)", dir_name)
             if m.lastindex != 2:
                 return part_PrintInCharte(ecotaxa_if, ErrorFormat("Le répertoire projet n'a pas un nom standard"))
             else:
-                FichierHeader = DossierUVPPath / "meta" / (m.group(1) + "_header_" + m.group(2) + ".txt")
+                fichier_header = DossierUVPPath / "meta" / (m.group(1) + "_header_" + m.group(2) + ".txt")
 
-            if not FichierHeader.exists():
+            if not fichier_header.exists():
                 return part_PrintInCharte(ecotaxa_if,
-                                          ErrorFormat("Le fichier header n'existe pas :" + FichierHeader.as_posix()))
+                                          ErrorFormat("Le fichier header n'existe pas :" + fichier_header.as_posix()))
             else:
-                # print("ouverture de " + FichierHeader)
-                with open(FichierHeader.as_posix(), encoding="latin_1") as FichierHeaderHandler:
-                    F = csv.DictReader(FichierHeaderHandler, delimiter=';')
-                    for r in F:
+                # print("ouverture de " + fichier_header)
+                with open(fichier_header.as_posix(), encoding="latin_1") as FichierHeaderHandler:
+                    f = csv.DictReader(FichierHeaderHandler, delimiter=';')
+                    for r in f:
+                        # noinspection PyTypeChecker
                         r['psampleid'] = None
                         if r['profileid'] in dbsample:
                             r['psampleid'] = dbsample[r['profileid']]['psampleid']
@@ -197,9 +204,9 @@ class TaskPartZooscanImport(AsyncTask):
                             r['nbrlinetaxo'] = dbsample[r['profileid']]['nbrlinetaxo']
                         self.param.profilelistinheader.append(r)
                         # self.param.profilelistinheader[r['profileid']]=r
-                    # Tri par 4eme colonne, profileid
+                    # Tri par profileid
                     self.param.profilelistinheader = sorted(self.param.profilelistinheader,
-                                                            key=lambda r: r['profileid'])
+                                                            key=lambda x: x['profileid'])
 
         if gvp('starttask') == "Y":
             self.param.ProcessOnlyMetadata = (gvp('onlymeta', 'N') == 'Y')
@@ -219,7 +226,7 @@ class TaskPartZooscanImport(AsyncTask):
 
             if len(self.param.profilelistinheader) == 0:
                 return part_PrintInCharte(ecotaxa_if,
-                                          ErrorFormat("No sample available in file %s" % (FichierHeader.as_posix())))
+                                          ErrorFormat("No sample available in file %s" % (fichier_header.as_posix())))
             # print("%s"%(self.param.profilelistinheader))
         return render_template('tasks/uvpzooscanimport_create.html', header=txt, data=self.param,
                                ServerPath=gvp("ServerPath"), TxtTaxoMap=gvp("TxtTaxoMap"))
@@ -227,8 +234,8 @@ class TaskPartZooscanImport(AsyncTask):
     def GetDoneExtraAction(self):
         # si le status est demandé depuis le monitoring ca veut dire que l'utilisateur est devant,
         # on efface donc la tache et on lui propose d'aller sur la classif manuelle
-        PrjId = self.param.pprojid
+        prj_id = self.param.pprojid
         time.sleep(1)
         DoTaskClean(self.task.id)
         return ("""<a href='%sprj/{0}' class='btn btn-primary btn-sm' role=button>Go to Project page</a> """ % PART_URL) \
-            .format(PrjId)
+            .format(prj_id)

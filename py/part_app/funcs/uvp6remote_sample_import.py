@@ -15,6 +15,7 @@ from html.parser import HTMLParser
 import numpy as np
 
 from part_app.funcs.uvp_sample_import import GetPathForRawHistoFile
+from part_app.prod_or_dev import DEV_BEHAVIOR
 from .. import database as partdatabase
 from ..app import db
 from ..db_utils import ExecSQL
@@ -54,12 +55,17 @@ def ParseMetadataFile(MetaF):
 
 
 class RemoteServerFetcher:
+    # A surcharger pour les tests sous Linux
+    FTP_PORT = 21
+
     def __init__(self, pprojid: int):
         self.Prj = partdatabase.part_projects.query.filter_by(pprojid=pprojid).first()
         self.ftp = None
 
     def Connect(self):
-        self.ftp = FTP(host=self.Prj.remote_url, user=self.Prj.remote_user, passwd=self.Prj.remote_password, timeout=10)
+        self.ftp = FTP(timeout=10)
+        self.ftp.connect(host=self.Prj.remote_url, port=self.FTP_PORT)
+        self.ftp.login(user=self.Prj.remote_user, passwd=self.Prj.remote_password)
         if ntcv(self.Prj.remote_directory) != "":
             self.ftp.cwd(self.Prj.remote_directory)
 
@@ -90,7 +96,8 @@ class RemoteServerFetcher:
         clé : N° de sample value=> sampletype,files[filetype]:filename
         Exemple :
         {'SG003B': {'sampletype': 'TIME',
-            'files': {'META': 'SG003B_000002LP_TIME_META.txt', 'LPM': 'SG003B_000002LP_TIME_LPM.txt', 'BLACK': 'SG003B_000002LP_TIME_BLACK.txt'}
+            'files': {'META': 'SG003B_000002LP_TIME_META.txt', 'LPM': 'SG003B_000002LP_TIME_LPM.txt'
+                                        , 'BLACK': 'SG003B_000002LP_TIME_BLACK.txt'}
              },
         'SG003A': {'sampletype': 'DEPTH',
             'files': {'TAXO2': 'SG003A_000002LP_DEPTH_TAXO2.txt', 'META': 'SG003A_000002LP_DEPTH_META.txt'
@@ -114,6 +121,10 @@ class RemoteServerFetcher:
                 samples[sample_name] = {'sampletype': m.group(3), 'files': {}}
             samples[sample_name]['files'][m.group(4)] = entry
             # print(entry, m.group(1), m.group(2), m.group(3), m.group(4))
+        if DEV_BEHAVIOR:
+            for samplename in list(samples.keys()):
+                if 'LPM' not in samples[samplename]['files']:
+                    del samples[samplename]
         return samples
 
     def GetServerFilelistHTTP(self):
@@ -160,9 +171,8 @@ class RemoteServerFetcher:
                 else:
                     continue  # existe déjà sans souhait de reforcer son chargement, on saute
             if 'META' not in server_samples[SampleName]['files'] or 'LPM' not in server_samples[SampleName]['files']:
-                logging.warning(
-                    "Particule RemoteServerFetcher.GetServerFiles skip processing : META and LPM are required to handle sample "
-                    + SampleName)
+                logging.warning("Particule RemoteServerFetcher.GetServerFiles skip processing : META and LPM are "
+                                "required to handle sample " + SampleName)
                 continue
             print("Processing sample ", SampleName)
             if sample is None:
@@ -257,9 +267,13 @@ def GenerateParticleHistogram(psampleid: int):
                 if part_sample.organizedbydeepth:
                     tranche = (depth // 5) * 5
                     depth_tranche = tranche + 2.5
+                    if DEV_BEHAVIOR:
+                        dateheure = datetime.datetime.strptime(time, "%Y%m%dT%H%M%S")
                 else:
                     tranche = time[:-4]  # On enlève minute et secondes
                     depth_tranche = depth  # on prend la premiere profondeur
+                    if DEV_BEHAVIOR:
+                        dateheure = None
                 nbr_par_classe = {}
                 # GreyParClasse = {}
                 nbr_img = float(L['IMAGE_NUMBER_PARTICLES'])
@@ -269,19 +283,25 @@ def GenerateParticleHistogram(psampleid: int):
                 if tranche not in histo_by_tranche:
                     histo_by_tranche[tranche] = {'NbrImg': 0, 'NbrParClasse': nbr_par_classe,
                                                  'DepthTranche': depth_tranche}  # ,'GreyParClasse':GreyParClasse
+                    if DEV_BEHAVIOR:
+                        histo_by_tranche[tranche]['timestamp'] = 0
                 else:
                     for classe in range(18):
                         histo_by_tranche[tranche]['NbrParClasse'][classe] += nbr_par_classe[classe]
                 histo_by_tranche[tranche]['NbrImg'] += nbr_img
+                if DEV_BEHAVIOR:
+                    if dateheure:
+                        # on va calculer l'heure moyenne, donc on fait la somme
+                        histo_by_tranche[tranche]['timestamp'] += dateheure.timestamp() * nbr_img
             logging.info("Line count %d" % nbr_line)
 
             ExecSQL("delete from part_histopart_det where psampleid=" + str(psampleid))
             sql = """insert into part_histopart_det(psampleid, lineno, depth,  watervolume,datetime
-                , class17, class18, class19, class20, class21, class22, class23, class24, class25, class26, class27, class28, class29
-                , class30, class31, class32, class33, class34)
-            values(%(psampleid)s,%(lineno)s,%(depth)s,%(watervolume)s,%(datetime)s,%(class17)s,%(class18)s,%(class19)s,%(class20)s,%(class21)s,%(class22)s
-            ,%(class23)s,%(class24)s,%(class25)s,%(class26)s,%(class27)s,%(class28)s
-            ,%(class29)s,%(class30)s,%(class31)s,%(class32)s,%(class33)s,%(class34)s)"""
+                , class17, class18, class19, class20, class21, class22, class23, class24, class25, class26, class27
+                , class28, class29, class30, class31, class32, class33, class34)
+            values(%(psampleid)s,%(lineno)s,%(depth)s,%(watervolume)s,%(datetime)s,%(class17)s,%(class18)s,%(class19)s
+            ,%(class20)s,%(class21)s,%(class22)s,%(class23)s,%(class24)s,%(class25)s,%(class26)s,%(class27)s
+            ,%(class28)s,%(class29)s,%(class30)s,%(class31)s,%(class32)s,%(class33)s,%(class34)s)"""
             sqlparam = {'psampleid': psampleid}
             tranches = sorted(histo_by_tranche.keys())
             for i, tranche in enumerate(tranches):
@@ -290,6 +310,10 @@ def GenerateParticleHistogram(psampleid: int):
                 sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage, 3)
                 if part_sample.organizedbydeepth:
                     sqlparam['datetime'] = None
+                    if DEV_BEHAVIOR:
+                        if histo_by_tranche[tranche]['timestamp']:
+                            ts = round(histo_by_tranche[tranche]['timestamp'] / histo_by_tranche[tranche]['NbrImg'], 1)
+                            sqlparam['datetime'] = datetime.datetime.fromtimestamp(ts)
                 else:
                     # on insère avec l'heure à 30minutes
                     sqlparam['datetime'] = datetime.datetime.strptime(tranche + '3000', "%Y%m%dT%H%M%S")
@@ -310,7 +334,10 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
     if part_sample is None:
         raise Exception("GenerateTaxonomyHistogram: Sample %d missing" % psampleid)
     prj = partdatabase.part_projects.query.filter_by(pprojid=part_sample.pprojid).first()
-    rawfileinvault = uvp_sample_import.GetPathForRawHistoFile(part_sample.psampleid)
+    if DEV_BEHAVIOR:
+        ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
+        ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
+    rawfileinvault = GetPathForRawHistoFile(part_sample.psampleid)
     depth_offset = prj.default_depthoffset
     if depth_offset is None:
         depth_offset = part_sample.acq_depthoffset
@@ -336,9 +363,12 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
                 if taxo_ids[i] > 0:
                     if taxo_ids[i] not in taxo_db:
                         raise Exception(
-                            "GenerateTaxonomyHistogram: Sample %d category_name_%d is not a known taxoid" %
-                            (psampleid, (i + 1)))
+                            "GenerateTaxonomyHistogram: Sample %d category_name_%d is not a known taxoid" % (
+                                psampleid, (i + 1)))
 
+        if DEV_BEHAVIOR:
+            if 'taxo2.txt' not in [f.filename.lower() for f in zf.filelist]:
+                return
         with zf.open('TAXO2.txt', 'r') as ftaxob:
             ftaxo = io.TextIOWrapper(ftaxob, encoding='latin_1')
             csvfile = csv.DictReader(ftaxo, delimiter='\t')
@@ -360,8 +390,12 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
                 size_par_classe = {}
                 nbr_img = float(L['IMAGE_NUMBER_PLANKTON'])
                 for classe in range(40):
-                    nbr_par_classe[classe] = ToFloat(L['NB_PLANKTON_cat_%s' % (classe + 1,)])
-                    size_par_classe[classe] = ToFloat(L['SIZE_PLANKTON_cat_%s' % (classe + 1,)])
+                    if DEV_BEHAVIOR:
+                        nbr_par_classe[classe] = ToFloat(L['NB_PLANKTON_cat_%s' % (classe + 1,)]) or 0.0
+                        size_par_classe[classe] = ToFloat(L['SIZE_PLANKTON_cat_%s' % (classe + 1,)]) or 0.0
+                    else:
+                        nbr_par_classe[classe] = ToFloat(L['NB_PLANKTON_cat_%s' % (classe + 1,)])
+                        size_par_classe[classe] = ToFloat(L['SIZE_PLANKTON_cat_%s' % (classe + 1,)])
                     size_par_classe[classe] = nbr_par_classe[classe] * size_par_classe[classe] \
                         if size_par_classe[classe] else 0
                 if tranche not in histo_by_tranche:
@@ -380,10 +414,15 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
                             classe]
             logging.info("Line count %d" % nbr_line)
 
-            ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
-            ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
-            sql = """INSERT INTO part_histocat(psampleid, classif_id, lineno, depth, watervolume, nbr, avgesd, totalbiovolume)
-                    VALUES(%(psampleid)s,%(classif_id)s,%(lineno)s,%(depth)s,%(watervolume)s,%(nbr)s,%(avgesd)s,%(totalbiovolume)s)"""
+            if DEV_BEHAVIOR:
+                pass
+            else:
+                ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
+                ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
+            sql = """INSERT INTO part_histocat(psampleid, classif_id, lineno, depth, watervolume, nbr
+                                , avgesd, totalbiovolume)
+                    VALUES(%(psampleid)s,%(classif_id)s,%(lineno)s,%(depth)s,%(watervolume)s,%(nbr)s
+                                ,%(avgesd)s,%(totalbiovolume)s)"""
             sqlparam = {'psampleid': psampleid}
             tranches = sorted(histo_by_tranche.keys())
             for i, tranche in enumerate(tranches):

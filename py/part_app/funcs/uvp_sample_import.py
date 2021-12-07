@@ -1109,9 +1109,8 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
                     continue
                 an_obj["objdatetime"] = None
                 if an_obj["objdate"] is not None and an_obj["objtime"] is not None:
-                    # Les dates sont textuelles en sortant de l'API
-                    # TODO
-                    an_obj["objdatetime"] = datetime.datetime(1987, 1, 1)
+                    # Les dates retournées par l'API sont textuelles
+                    an_obj["objdatetime"] = datetime.datetime.strptime(an_obj["objdate"]+" "+an_obj["objtime"], "%Y-%m-%d %H:%M:%S")
                 ret.append(an_obj)
             return ret
 

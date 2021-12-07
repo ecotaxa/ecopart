@@ -1,13 +1,17 @@
+import bz2
 import csv
 import logging
+from pathlib import Path
 
 import numpy as np
 
+from .uvp_sample_import import GetPathForRawHistoFile
 from .. import database as partdatabase, app
 from ..app import db
 from ..constants import PartDetClassLimit
 from ..db_utils import ExecSQL
 from ..funcs.common_sample_import import CleanValue, ToFloat, GenerateReducedParticleHistogram
+from ..prod_or_dev import DEV_BEHAVIOR
 
 
 def CreateOrUpdateSample(pprojid, headerdata):
@@ -30,10 +34,6 @@ def CreateOrUpdateSample(pprojid, headerdata):
         logging.info(
             "Update LISST sample %s for %s %s" % (sample.psampleid, headerdata['profileid'], headerdata['filename']))
     sample.filename = headerdata['filename']
-    # TODO le calcule à partir de la première ligne
-    # Sample.sampledate=datetime.datetime(int(headerdata['filename'][0:4]),int(headerdata['filename'][4:6]),int(headerdata['filename'][6:8])
-    #                                    ,int(headerdata['filename'][8:10]), int(headerdata['filename'][10:12]), int(headerdata['filename'][12:14])
-    #                                     )
     sample.latitude = ToFloat(headerdata['latitude'])
     sample.longitude = ToFloat(headerdata['longitude'])
     sample.organizedbydeepth = True
@@ -55,8 +55,8 @@ def BuildLISSTClass(kerneltype):
         raise Exception("Invalide LISST kernel type '%s'" % kerneltype)
     lisst_class = np.ndarray((32, 3))
     rho = np.power(200.0, 1 / 32.0)
-    lisst_class[:, 0] = 1.25 * (np.power(rho, np.arange(0, 32))) / 1000
-    lisst_class[:, 1] = 1.25 * (np.power(rho, np.arange(1, 33))) / 1000
+    lisst_class[:, 0] = x * (np.power(rho, np.arange(0, 32))) / 1000
+    lisst_class[:, 1] = x * (np.power(rho, np.arange(1, 33))) / 1000
     lisst_class[:, 2] = np.sqrt(lisst_class[:, 0] * lisst_class[:, 1])
     return lisst_class
 
@@ -85,6 +85,32 @@ def MapClasses(L, LISSTClass):
     return res
 
 
+def GenerateRawHistogram(psampleid):
+    """
+    Sur le lisst, c'est juste une copie du asc qui est stockée en format BZIP
+    :param psampleid:
+    :return: None
+    """
+    # PartSample= partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
+    part_sample = db.session.query(partdatabase.part_samples).filter_by(psampleid=psampleid).first()
+    if part_sample is None:
+        raise Exception("GenerateRawHistogram: Sample %d missing" % psampleid)
+
+    prj = db.session.query(partdatabase.part_projects).filter_by(pprojid=part_sample.pprojid).first()
+    server_root = app.ServerLoadArea
+    dossier_uvp_path = server_root / prj.rawfolder
+    fichier = dossier_uvp_path / "work" / (part_sample.filename + '.asc')
+    if not fichier.exists():
+        raise Exception(f"GenerateRawHistogram: file {fichier.as_posix()} missing")
+    logging.info("Processing file " + fichier.as_posix())
+
+    raw_file = GetPathForRawHistoFile(part_sample.psampleid)
+    with bz2.open(raw_file, "wb") as f, fichier.open('rb') as fFichier:
+        f.write(fFichier.read())
+    part_sample.histobrutavailable = True
+    db.session.commit()
+
+
 def GenerateParticleHistogram(psampleid):
     """
     Génération de l'histogramme particulaire détaillé (45 classes) et réduit (15 classes) à partir du fichier ASC
@@ -94,28 +120,37 @@ def GenerateParticleHistogram(psampleid):
     part_sample = partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()
     if part_sample is None:
         raise Exception("GenerateParticleHistogram: Sample %d missing" % psampleid)
+    if not part_sample.organizedbydeepth:
+        raise Exception("GenerateParticleHistogram: Sample %d , LISST support only organized by depth data" % psampleid)
     lisst_class = BuildLISSTClass(part_sample.lisst_kernel)
 
-    Prj = partdatabase.part_projects.query.filter_by(pprojid=part_sample.pprojid).first()
-    ServerRoot = app.ServerLoadArea
-    DossierUVPPath = ServerRoot / Prj.rawfolder
-    Fichier = DossierUVPPath / "work" / (part_sample.filename + '.asc')
-    logging.info("Processing file " + Fichier.as_posix())
-    NbrLine = 0
-    with Fichier.open() as csvfile:
-        for L in csvfile:
-            NbrLine += 1
-    logging.info("Line count %d" % NbrLine)
+    logging.info(f"Processing sample {psampleid} raw file")
     # Col0=Nbr Data pour calculer la moyenne , 1->45 Biovol cumulé puis moyénné
     histo_by_tranche = np.zeros((1, 46))
-    with Fichier.open() as csvfile:
+    if DEV_BEHAVIOR:
+        # Stocké sous forme .bz2?
+        raw_file = GetPathForRawHistoFile(part_sample.psampleid)
+        csvfile = bz2.open(raw_file, 'rt')
+    else:
+        Prj = partdatabase.part_projects.query.filter_by(pprojid=part_sample.pprojid).first()
+        ServerRoot = app.ServerLoadArea
+        DossierUVPPath = ServerRoot / Prj.rawfolder
+        Fichier = DossierUVPPath / "work" / (part_sample.filename + '.asc')
+        logging.info("Processing file " + Fichier.as_posix())
+        NbrLine = 0
+        with Fichier.open() as csvfile:
+            for L in csvfile:
+                NbrLine += 1
+        logging.info("Line count %d" % NbrLine)
+        csvfile = Fichier.open()
+    try:
         rdr = csv.reader(csvfile, delimiter=' ')
         for i, row in enumerate(rdr):
             depth = float(row[36])
             if part_sample.organizedbydeepth:
-                tranche = depth // 5
+                tranche = int(depth // 5)
             else:
-                tranche = i // 50
+                tranche = int(i // 50)
             part = np.empty(32)
             for k in range(0, 32):
                 part[k] = float(row[k])
@@ -129,17 +164,24 @@ def GenerateParticleHistogram(psampleid):
 
             histo_by_tranche[tranche, 1:46] += part
             histo_by_tranche[tranche, 0] += 1
+    finally:
+        csvfile.close()
     histo_by_tranche[:, 1:46] /= histo_by_tranche[:, 0, np.newaxis]
 
     ExecSQL("delete from part_histopart_det where psampleid=" + str(psampleid))
     sql = """insert into part_histopart_det(psampleid, lineno, depth,  watervolume
-        , biovol01, biovol02, biovol03, biovol04, biovol05, biovol06, biovol07, biovol08, biovol09, biovol10, biovol11, biovol12, biovol13, biovol14
-        , biovol15, biovol16, biovol17, biovol18, biovol19, biovol20, biovol21, biovol22, biovol23, biovol24, biovol25, biovol26, biovol27, biovol28, biovol29
-        , biovol30, biovol31, biovol32, biovol33, biovol34, biovol35, biovol36, biovol37, biovol38, biovol39, biovol40, biovol41, biovol42, biovol43, biovol44, biovol45)
-    values(%(psampleid)s,%(lineno)s,%(depth)s,%(watervolume)s,%(biovol01)s,%(biovol02)s,%(biovol03)s,%(biovol04)s,%(biovol05)s,%(biovol06)s
-    ,%(biovol07)s,%(biovol08)s,%(biovol09)s,%(biovol10)s,%(biovol11)s,%(biovol12)s,%(biovol13)s,%(biovol14)s,%(biovol15)s,%(biovol16)s,%(biovol17)s
-    ,%(biovol18)s,%(biovol19)s,%(biovol20)s,%(biovol21)s,%(biovol22)s,%(biovol23)s,%(biovol24)s,%(biovol25)s,%(biovol26)s,%(biovol27)s,%(biovol28)s
-    ,%(biovol29)s,%(biovol30)s,%(biovol31)s,%(biovol32)s,%(biovol33)s,%(biovol34)s,%(biovol35)s,%(biovol36)s,%(biovol37)s,%(biovol38)s,%(biovol39)s
+        , biovol01, biovol02, biovol03, biovol04, biovol05, biovol06, biovol07, biovol08, biovol09, biovol10, biovol11
+        , biovol12, biovol13, biovol14, biovol15, biovol16, biovol17, biovol18, biovol19, biovol20, biovol21, biovol22
+        , biovol23, biovol24, biovol25, biovol26, biovol27, biovol28, biovol29, biovol30, biovol31, biovol32, biovol33
+        , biovol34, biovol35, biovol36, biovol37, biovol38, biovol39, biovol40, biovol41, biovol42, biovol43, biovol44
+        , biovol45)
+    values(%(psampleid)s,%(lineno)s,%(depth)s,%(watervolume)s,%(biovol01)s,%(biovol02)s,%(biovol03)s,%(biovol04)s
+    ,%(biovol05)s,%(biovol06)s,%(biovol07)s,%(biovol08)s,%(biovol09)s,%(biovol10)s,%(biovol11)s,%(biovol12)s
+    ,%(biovol13)s,%(biovol14)s,%(biovol15)s,%(biovol16)s,%(biovol17)s
+    ,%(biovol18)s,%(biovol19)s,%(biovol20)s,%(biovol21)s,%(biovol22)s,%(biovol23)s,%(biovol24)s,%(biovol25)s
+    ,%(biovol26)s,%(biovol27)s,%(biovol28)s
+    ,%(biovol29)s,%(biovol30)s,%(biovol31)s,%(biovol32)s,%(biovol33)s,%(biovol34)s,%(biovol35)s,%(biovol36)s
+    ,%(biovol37)s,%(biovol38)s,%(biovol39)s
     ,%(biovol40)s,%(biovol41)s,%(biovol42)s,%(biovol43)s,%(biovol44)s,%(biovol45)s)"""
     sqlparam = {'psampleid': psampleid}
     for i, r in enumerate(histo_by_tranche):

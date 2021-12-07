@@ -23,6 +23,7 @@ class ZooProjectGeneratorTypeA(ZooProjectGenerator):
     def CreateSample(self, SampleName) -> database.Samples:
         Sample = database.Samples()
         Sample.projid = self.projid
+        # C'est utilisé lors du match avec EcoPart
         Sample.orig_id = SampleName
         db.session.add(Sample)
         db.session.commit()
@@ -77,6 +78,7 @@ class ZooProjectGeneratorTypeA(ZooProjectGenerator):
     def Generate(self, Title, OwnerID=1, SamplePrefix=""):
         Prj = self.InitializeProject(Title, OwnerID)
         logging.info(f"Project {Prj.projid} : {Prj.title} Created")
+        # On crée 2 samples ayant pour destin de matcher dans EcoPart
         for samplename in ("sample01", "sampleT1"):
             Sample = self.CreateSample(SamplePrefix + samplename)
             Sampleid = Sample.sampleid  # if faut memoriser les ID sinon ça fait un select à chaque fois qu'on le demande
