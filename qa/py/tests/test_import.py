@@ -16,13 +16,14 @@ from part_app.database import part_projects, part_histopart_reduit, part_samples
 from data_taxohisto import data_taxho_histo_sample1, data_taxho_histo_sampleT1
 from part_app.db_utils import GetAssoc, ExecSQL
 from part_app.funcs.uvp6remote_sample_import import RemoteServerFetcher
-from utils import TaskInstance, dump_table, ShowOnWinmerge, zoo_login, GetRow
+from utils import TaskInstance, dump_table, ShowOnUIDiffApp, zoo_login, GetRow
 
 HERE = Path(dirname(realpath(__file__)))
 DATA_DIR = (HERE / ".." / ".." / "data").resolve()
 
 # Les tests supposent que les data à importer sont là, dans le répertoire "qa/data" qui est indiqué dans les projets
 app.ServerLoadArea = (HERE / '../../..').resolve()
+app.VaultRootDir = (HERE / '../../vault').resolve()
 
 
 @pytest.fixture
@@ -151,7 +152,7 @@ def clean_existing_projectdata(pprojid: int):
 # noinspection DuplicatedCode
 def test_import_uvp6_uvpapp(app, caplog, tmpdir):
     caplog.set_level(logging.DEBUG)  # pour mise au point
-    caplog.set_level(logging.CRITICAL)  # pour execution très silencieuse
+    # caplog.set_level(logging.CRITICAL)  # pour execution très silencieuse
     part_project = db.session.query(part_projects).filter_by(
         ptitle="EcoPart TU Project UVP 6 from UVP APP").first()
     if part_project is None:
@@ -190,7 +191,7 @@ def test_import_uvp6_uvpapp(app, caplog, tmpdir):
         # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
         cmpresult = reffile.read() == datafile.read()
         if not cmpresult:
-            ShowOnWinmerge(reffile, datafile)
+            ShowOnUIDiffApp(reffile, datafile)
         assert cmpresult
         for sampleid in (sample1.psampleid, sample_t1.psampleid):
             check_sampleTypeAkeyValues(sampleid)
@@ -241,7 +242,7 @@ def test_import_uvp5_BRU(app, caplog, tmpdir):
         # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
         cmpresult = reffile.read() == datafile.read()
         if not cmpresult:
-            ShowOnWinmerge(reffile, datafile)
+            ShowOnUIDiffApp(reffile, datafile)
         assert cmpresult
         check_sampleTypeAkeyValues(sample1.psampleid)
         sample2 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="brusample02").first()
@@ -288,7 +289,7 @@ def test_import_uvp5_BRU1(app, caplog, tmpdir):
         # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
         cmpresult = reffile.read() == datafile.read()
         if not cmpresult:
-            ShowOnWinmerge(reffile, datafile)
+            ShowOnUIDiffApp(reffile, datafile)
         assert cmpresult
         check_sampleTypeAkeyValues(sample1.psampleid)
         sample2 = db.session.query(part_samples).filter_by(pprojid=pprojid, profileid="bru1sample02").first()
@@ -410,7 +411,7 @@ def test_import_uvp_remote_lambda_http(app, caplog, tmpdir, httpserver: HTTPServ
         # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
         cmpresult = reffile.read() == datafile.read()
         if not cmpresult:
-            ShowOnWinmerge(reffile, datafile)
+            ShowOnUIDiffApp(reffile, datafile)
         assert cmpresult
         for sampleid in (sample1.psampleid, sample_t1.psampleid):
             check_sampleTypeAkeyValues(sampleid, CompareBiovolumePart=False, CompareBiovolumeZoo=False)
@@ -497,7 +498,7 @@ def test_import_uvp_remote_lambda_ftp(app, caplog, tmpdir, ftpserver: PytestLoca
         # en cas d'ecart evite d'afficher un mega message d'erreur, plutot activer winmerge
         cmpresult = reffile.read() == datafile.read()
         if not cmpresult:
-            ShowOnWinmerge(reffile, datafile)
+            ShowOnUIDiffApp(reffile, datafile)
         assert cmpresult
         for sampleid in (sample1.psampleid, sample_t1.psampleid):
             check_sampleTypeAkeyValues(sampleid, CompareBiovolumePart=False, CompareBiovolumeZoo=False)

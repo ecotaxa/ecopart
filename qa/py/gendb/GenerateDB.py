@@ -1,6 +1,4 @@
-from os.path import dirname, realpath, join
 import logging
-import sys
 from os.path import dirname, realpath, join
 from pathlib import Path
 
@@ -33,23 +31,26 @@ from tests.utils import TaskInstance, zoo_login
 
 HERE = Path(dirname(realpath(__file__)))
 
+# Les tests supposent que les data à importer sont là, dans le répertoire "qa/data" qui est indiqué dans les projets
+app.ServerLoadArea = (HERE / '../../..').resolve()
+app.VaultRootDir = (HERE / '../../vault').resolve()
+
 
 def main():
-    TESTAPPTESTFOLDER = realpath(join(HERE, "..", "tests"))
-    sys.path = [TESTAPPTESTFOLDER] + sys.path
-
     logging.basicConfig(format='%(asctime)s %(filename)s: %(message)s', level=logging.DEBUG)
 
-    if '_tu' not in part_app.config['DB_DATABASE']:
+    db_database = part_app.config['DB_DATABASE']
+    if not str(db.engine.url).endswith(db_database):
+        print("SQLAlchemy has a different DB!")
+        exit(-1)
+    if '_tu' not in db_database:
         print("Generation of database can occur only on _tu database !!!!\nGeneration ABORTED")
-        exit(1)
+        exit(-1)
     logging.info("Initialize Database")
 
     # Recrée la structure des bases de données (Zoo + Part)
     manage.CreateDB(SkipConfirmation=True, UseExistingDatabase=True)
 
-    # Les tests supposent que les data à importer sont là, dans le répertoire "qa/data" qui est indiqué dans les projets
-    app.ServerLoadArea = (HERE / '../../..').resolve()
     # La config EcoTaxa est +/- similaire à celle de EcoPart
     generate_backend_conf(part_app.config)
     # Il faut la config avant de lancer car le thread qui exécute les jobs se lance immédiatement

@@ -35,6 +35,7 @@ def dbcreate():
         db.create_all()
         # from flask_migrate import stamp
         # stamp(revision='head')
+        ExecSQL("""drop view if exists objects""")
         ExecSQL("""create view objects as select oh.*,ofi.*
         from obj_head oh left join obj_field ofi on oh.objid=ofi.objfid""")
 
@@ -74,11 +75,6 @@ def CreateDB(UseExistingDatabase=False, SkipConfirmation=False):
         print("Host: ", part_app.config['DB_HOST'])
         print("Port: ", part_app.config['DB_PORT'])
         import psycopg2
-
-        if os.path.exists("vault"):
-            print("Drop existing images")
-            shutil.rmtree("vault")
-            os.mkdir("vault")
 
         print("Connect Database")
         if UseExistingDatabase:

@@ -75,7 +75,7 @@ def dump_table(out, a_table: db.Model, where, skipcol=()):
 # with open("testdump.txt", "w") as fd:
 #     dump_table(fd,dbpart.part_histopart_reduit,"psampleid=6",skipcol=('psampleid'))
 
-def ShowOnWinmerge(File1, File2):
+def ShowOnUIDiffApp(File1, File2):
     if os.name == 'nt':
         cmd = f'"C:\\Program Files\\WinMerge\\WinMergeU.exe" "{File1}" "{File2}"'
     else:

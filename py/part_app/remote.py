@@ -308,7 +308,7 @@ class EcoTaxaInstance(object):
                                                     project_filters=filters)
         ret = []
         for an_obj in res.details:
-            db_like_obj = {col.split(".", 1)[1]: val
+            db_like_obj = {col.split(".", 1)[1]: val  # remove prefix and turn into an ordinary dict
                            for col, val in zip(cols, an_obj)}
             ret.append(db_like_obj)
         return ret

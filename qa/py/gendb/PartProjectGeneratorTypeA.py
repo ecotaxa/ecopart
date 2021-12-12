@@ -4,6 +4,8 @@ from part_app import database
 import typing, math, logging
 from datetime import datetime, timedelta
 
+from part_app.constants import VOLUME_ROUNDING
+
 
 class PartProjectGeneratorTypeA:
     def __init__(self):
@@ -51,8 +53,8 @@ class PartProjectGeneratorTypeA:
             h.psampleid = Sample.psampleid
             h.datetime = Sample.sampledate + timedelta(seconds=63 * d)
             h.lineno = d
-            h.depth = d * 5 + 2.5  # c'est des tranche de 5 m
-            h.watervolume = Sample.acq_volimage * NbrImages
+            h.depth = d * 5 + 2.5  # c'est des tranches de 5 m
+            h.watervolume = round(Sample.acq_volimage * NbrImages, VOLUME_ROUNDING)
             for i in range(1, 46):
                 setattr(h, f"class{i:02d}", 0)
             # Classe reduite 6 = Det 16->18

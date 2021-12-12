@@ -14,6 +14,7 @@ from html.parser import HTMLParser
 
 import numpy as np
 
+from part_app.constants import VOLUME_ROUNDING
 from part_app.funcs.uvp_sample_import import GetPathForRawHistoFile
 from part_app.prod_or_dev import DEV_BEHAVIOR
 from .. import database as partdatabase
@@ -307,7 +308,7 @@ def GenerateParticleHistogram(psampleid: int):
             for i, tranche in enumerate(tranches):
                 sqlparam['lineno'] = i
                 sqlparam['depth'] = round(histo_by_tranche[tranche]['DepthTranche'], 2)
-                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage, 3)
+                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage, VOLUME_ROUNDING)
                 if part_sample.organizedbydeepth:
                     sqlparam['datetime'] = None
                     if DEV_BEHAVIOR:
@@ -428,7 +429,7 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
             for i, tranche in enumerate(tranches):
                 sqlparam['lineno'] = i
                 sqlparam['depth'] = histo_by_tranche[tranche]['DepthTranche']
-                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage, 3)
+                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage, VOLUME_ROUNDING)
                 for classe in range(40):
                     if taxo_ids[classe] > 0 and histo_by_tranche[tranche]['NbrParClasse'][classe] > 0:
                         sqlparam['classif_id'] = taxo_ids[classe]

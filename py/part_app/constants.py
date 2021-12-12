@@ -27,3 +27,8 @@ CTDFixedCol = {
 }
 CTDFixedColByKey = {v: k for k, v in CTDFixedCol.items()}
 LstInstrumType = ('uvp5', 'uvp6', 'lisst', 'uvp6remote')
+
+# On arrondit les volumes avec cette constante quand ils sont calculés
+# Sinon, on peut se retrouver avec des e.g. 47.459999999999994 ou 3.3899999999999997
+# et l'erreur se propage.
+VOLUME_ROUNDING = 6

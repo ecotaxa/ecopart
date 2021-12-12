@@ -12,10 +12,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import psycopg2.extras
 
 from .. import database as partdatabase, app
-from ..app import part_app, db, VaultRootDir
-from ..constants import PartDetClassLimit
+from ..app import part_app, db
+from ..constants import PartDetClassLimit, VOLUME_ROUNDING
 from ..db_utils import ExecSQL, GetAssoc, GetAll
 from ..fs_utils import CreateDirConcurrentlyIfNeeded
 from ..funcs.common_sample_import import CleanValue, ToFloat, GetTicks, GenerateReducedParticleHistogram
@@ -23,7 +24,7 @@ from ..prod_or_dev import DEV_BEHAVIOR
 from ..remote import EcoTaxaInstance
 from ..tasks.importcommon import ConvTextDegreeDotMinuteToDecimalDegree, calcpixelfromesd_aa_exp
 from ..txt_utils import DecodeEqualList
-import psycopg2.extras
+
 
 def CreateOrUpdateSample(pprojid, headerdata):
     """
@@ -168,7 +169,7 @@ def CreateOrUpdateSample(pprojid, headerdata):
 
 def GetPathForRawHistoFile(psampleid, flash='1'):
     VaultFolder = "partraw%04d" % (psampleid // 10000)
-    vaultroot = Path(VaultRootDir)
+    vaultroot = Path(app.VaultRootDir)
     # creation du repertoire contenant les histogramme brut si necessaire
     CreateDirConcurrentlyIfNeeded(vaultroot / VaultFolder)
     # si flash est à 0 on ajoute .black dans le nom du fichier
@@ -185,7 +186,7 @@ def GetPathForImportGraph(psampleid, suffix, relative_to_vault=False):
     :return: chemin posix de l'image 
     """
     vault_folder = "pargraph%04d" % (psampleid // 10000)
-    vaultroot = Path(VaultRootDir)
+    vaultroot = Path(app.VaultRootDir)
     # creation du repertoire contenant les graphe d'importation si necessaire
     if not relative_to_vault:  # Si Relatif c'est pour avoir l'url inutile de regarder si le repertoire existe.
         CreateDirConcurrentlyIfNeeded(vaultroot / vault_folder)
@@ -679,7 +680,8 @@ def GenerateParticleHistogram(psampleid):
                     if part[i, 7]:
                         dateint = int(part[i, 7])
                         if dateint not in date_conv_dict:
-                            date_conv_dict[dateint] = datetime.datetime.strptime(str(dateint), "%Y%m%d%H%M%S").timestamp()
+                            date_conv_dict[dateint] = datetime.datetime.strptime(str(dateint),
+                                                                                 "%Y%m%d%H%M%S").timestamp()
                         part[i, 7] = date_conv_dict[dateint]
         else:
             # ajout d'attributs calculés pour chaque ligne du fichier.
@@ -759,6 +761,9 @@ def GenerateParticleHistogram(psampleid):
             depth_par_tranche = np.bincount((part_tranche[first_lig_id_by_image, 0]).astype(np.int32),
                                             part[first_lig_id_by_image, 0]) / np.bincount(
                 (part_tranche[first_lig_id_by_image, 0]).astype(np.int32))
+
+    # On arrondit les volumes avant de s'en servir comme base pour les autres calculs
+    volume_par_tranche = np.round(volume_par_tranche, decimals=VOLUME_ROUNDING)
 
     # les calculs de concentration sont communs aux 2 types de profils
     if DEV_BEHAVIOR:
@@ -1110,7 +1115,8 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
                 an_obj["objdatetime"] = None
                 if an_obj["objdate"] is not None and an_obj["objtime"] is not None:
                     # Les dates retournées par l'API sont textuelles
-                    an_obj["objdatetime"] = datetime.datetime.strptime(an_obj["objdate"]+" "+an_obj["objtime"], "%Y-%m-%d %H:%M:%S")
+                    an_obj["objdatetime"] = datetime.datetime.strptime(an_obj["objdate"] + " " + an_obj["objtime"],
+                                                                       "%Y-%m-%d %H:%M:%S")
                 ret.append(an_obj)
             return ret
 
@@ -1126,7 +1132,7 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
                                                 ,watervolume 
                                             from part_histopart_reduit 
                                             where psampleid=%s""" % psampleid, None, False,
-                                        psycopg2.extras.RealDictCursor)
+                               psycopg2.extras.RealDictCursor)
             lst_vol = {}
             for vol in lst_voldb:
                 tranche = int(math.floor(vol['datetime'].timestamp() / 3600))

@@ -14,7 +14,7 @@ from Zoo_backend import BACKEND_PORT, kill_backend, launch_backend
 from part_app import urls, app
 from part_app.app import part_app, db, g
 from part_app.database import part_projects
-from utils import TaskInstance, ShowOnWinmerge, zoo_login
+from utils import TaskInstance, ShowOnUIDiffApp, zoo_login
 import zipfile
 
 HERE = Path(dirname(realpath(__file__)))
@@ -23,6 +23,7 @@ REF_EXPORT_DIR = (DATA_DIR / "ref_export")
 
 # Les tests supposent que les data à importer sont là, dans le répertoire "qa/data" qui est indiqué dans les projets
 app.ServerLoadArea = (HERE / '../../..').resolve()
+app.VaultRootDir = (HERE / '../../vault').resolve()
 
 
 @pytest.fixture
@@ -99,25 +100,44 @@ def SupprimerColFromTSV(data: bytes, colname: bytes):
     return b'\n'.join(lignes)
 
 
-def checkCompareTSV(data_ref, data_gen, separator_regex=b'\t|;'):
+def checkCompareTSVorODV(data_ref, data_gen, separator_regex=b'\t|;'):
+    """
+        Comparaison entre deux jeux de données, TSV ou ODV.
+    """
     lignes_r = data_ref.split(b'\n')
     lignes_g = data_gen.split(b'\n')
     if len(lignes_r) != len(lignes_g):
-        return False
+        return ["%d lignes en ref, %d en gen" % (len(lignes_r), len(lignes_g))]
+    problems = []
+    line_num = 1
     for (row_r, row_g) in zip(lignes_r, lignes_g):
         cols_r = re.split(separator_regex, row_r)
         cols_g = re.split(separator_regex, row_g)
         if len(cols_r) != len(cols_g):
-            return False
-        for (col_r, col_g) in zip(cols_r, cols_g):
-            if col_r.replace(b'.', b'', 1).strip().isdigit() and col_r.replace(b'.', b'',
-                                                                               1).strip().isdigit():  # les deux sont des float
-                if not math.isclose(float(col_r.strip()), float(col_g.strip()), abs_tol=1e-8):
-                    return False
-            else:  # pas des chiffres on compare l'égalité des texte
-                if col_r != col_g:
-                    return False
-    return True
+            problems.append("lne %d : %d colonnes en ref, %d en gen" % (line_num, len(cols_r), len(cols_g)))
+        else:
+            lasts = (False,)*(len(cols_r)-1)+(True,)
+            for (col_r, col_g, last) in zip(cols_r, cols_g, lasts):
+                try:
+                    float_r, float_g = (float(col_r), float(col_g))
+                    if not math.isclose(float_r, float_g):
+                        problems.append("lne %d : flt %s (ref) <> %s (gen)" % (line_num, col_r, col_g))
+                except ValueError:
+                    # pas des chiffres, on compare l'égalité des texte
+                    if last:
+                        # La 'ref' (dans qa/data) a été générée sous Windows, auquel cas les lignes se finissent par \r\n, et pas la 'gen'
+                        # _mais_ quelquefois, la 'gen' aussi finit par '\r\n', car les fichiers proviennent du vault où ils ont
+                        # simplement été copiés.
+                        col_r = col_r.rstrip()
+                        col_g = col_g.rstrip()
+                    if col_r != col_g:
+                        if b'\xc2' not in col_g:
+                            problems.append("lne %d : txt %s (ref) <> %s (gen)" % (line_num, col_r, col_g))
+        line_num += 1
+        if len(problems) > 100:
+            problems.append("Arrêt après 100")
+            break
+    return problems
 
 
 def isBZ2(file: Path) -> bool:
@@ -165,13 +185,16 @@ def check_compare_zip(refzip: Path, resultzip: Path, tmpdir: str, dirsuffix: str
         result_filename = tmpdir_path_result / nomfichierfull
         with open(tmpdir_path_result / nomfichierfull, "rb") as fresult:
             data_result = SupprimeCreateTime(fresult.read())
-        cmpresult = checkCompareTSV(data_ref, data_result)
-        if not cmpresult:
-            ShowOnWinmerge(ref_filename, result_filename)
-        assert cmpresult
+        cmpresult = checkCompareTSVorODV(data_ref, data_result)
+        if len(cmpresult) > 0:
+            ShowOnUIDiffApp(ref_filename, result_filename)
+        assert cmpresult == []
 
 
 def check_zip_with_ref(refdirname: str, task, tmpfilename: str, FTPExportAreaFolter: Path = None):
+    """
+        Vérification d'un zip produit par l'export, en utilisant une référence.
+    """
     ref_dir = REF_EXPORT_DIR / refdirname
     liste_fichier_ref = {SupprimeDateTime(f.name): f.name for f in ref_dir.glob('*')}
     # print(liste_fichier_ref)
@@ -185,13 +208,14 @@ def check_zip_with_ref(refdirname: str, task, tmpfilename: str, FTPExportAreaFol
         nom_fichier_zip = os.path.join(task.GetWorkingDir(), task.GetResultFile())
     with zipfile.ZipFile(nom_fichier_zip, 'r') as z:
         liste_fichier_zip = z.namelist()
-        # s'il y a trop de fichiers dans le zip ça fera une erreur lors de la comparaison de ce fichier
+        # Comparaison des noms de fichiers avant de comparer leur contenu
         ref_fichiers = set(liste_fichier_ref)
         actu_fichiers = set([SupprimeDateTime(f) for f in liste_fichier_zip])
         manquants = ref_fichiers.difference(actu_fichiers)
         en_trop = actu_fichiers.difference(ref_fichiers)
-        assert len(en_trop) == 0 and len(manquants) == 0, \
-            "Fichiers en trop dans le zip: %s ou manquants dans le zip: %s" % (str(en_trop), str(manquants))
+        assert len(manquants) == 0, "Fichiers manquants dans le zip: %s" % str(manquants)
+        if len(en_trop) > 0:
+            logging.warning("Fichiers en trop dans le zip: %s", str(en_trop))
         # assert len(liste_fichier_zip) >= len(liste_fichier_ref), \
         #     "Nombre de fichier qui ne correspond pas entre le zip et ref"
         for nomfichier in z.namelist():
@@ -214,23 +238,29 @@ def check_zip_with_ref(refdirname: str, task, tmpfilename: str, FTPExportAreaFol
                 if 'ZOO_raw' in nomfichierref or 'metadata_sum' in nomfichierref:
                     data_ref = SupprimerColFromTSV(data_ref, b'psampleid')
                     data_gen = SupprimerColFromTSV(data_gen, b'psampleid')
-                cmpresult = checkCompareTSV(data_ref, data_gen)
-                if not cmpresult:
-                    tmp_file = os.path.join(task.GetWorkingDir(), tmpfilename)
-                    ref_tmp_file = os.path.join(task.GetWorkingDir(), 'ref_' + tmpfilename)
+                cmpresult = checkCompareTSVorODV(data_ref, data_gen)
+                if len(cmpresult) != 0:
+                    # /!\ lorsque la comparaison échoue, la _totalité_ des fichiers originaux
+                    # est exposée dans l'application de diff.
+                    # Les différence NUMERIQUES gommées dans checkCompareTSVorODV _vont_ apparaître dans cet appli,
+                    # alors qu'elle ne sont pas la cause de l'échec du test.
+                    # E.g. Si sur 1000 lignes, 999 sont OK en utilisant la règle d'arrondi, mais qu'il
+                    # manque un \t sur la ligne restante, les 1000 lignes seront affichées.
+                    tmp_file = os.path.join(task.GetWorkingDir(), tmpfilename + "_" + nomfichier)
+                    ref_tmp_file = os.path.join(task.GetWorkingDir(), 'ref_' + tmpfilename + "_" + nomfichier)
                     with open(tmp_file, "wb") as ftmp:
                         ftmp.write(data_gen)
                     with open(ref_tmp_file, "wb") as ftmp:
                         ftmp.write(data_ref)
-                    ShowOnWinmerge(ref_tmp_file, tmp_file)
-                assert cmpresult
+                    ShowOnUIDiffApp(ref_tmp_file, tmp_file)
+                assert cmpresult == []
 
 
 # noinspection DuplicatedCode
 def test_export_odv_reduit_multi(app, caplog,
                                  part_project_uvpapp, part_project_uvpbru, part_project_uvpremotelambdahttp):
     caplog.set_level(logging.DEBUG)  # pour mise au point
-    caplog.set_level(logging.CRITICAL)  # pour execution très silencieuse
+    # caplog.set_level(logging.CRITICAL)  # pour execution très silencieuse
     with TaskInstance(app, "TaskPartExport",
                       GetParams=f"filt_uproj={part_project_uvpapp.pprojid}&filt_uproj={part_project_uvpbru.pprojid}"
                                 f"&filt_uproj={part_project_uvpremotelambdahttp.pprojid}",
@@ -244,7 +274,7 @@ def test_export_odv_reduit_multi(app, caplog,
 def test_export_tsv_reduit_multi(app, caplog,
                                  part_project_uvpapp, part_project_uvpbru, part_project_uvpremotelambdahttp):
     caplog.set_level(logging.DEBUG)  # pour mise au point
-    caplog.set_level(logging.CRITICAL)  # pour execution très silencieuse
+    # caplog.set_level(logging.CRITICAL)  # pour execution très silencieuse
     # warnings.simplefilter("error", UserWarning) # transforme les warning en exception pour mieux les traquer
     with TaskInstance(app, "TaskPartExport",
                       GetParams=f"filt_uproj={part_project_uvpapp.pprojid}&filt_uproj={part_project_uvpbru.pprojid}"
@@ -332,7 +362,7 @@ def test_export_tsvagg_det_multi(app, caplog,
 def test_export_raw_multi(app, caplog,
                           part_project_uvpapp, part_project_uvpbru, part_project_uvpremotelambdahttp):
     caplog.set_level(logging.DEBUG)  # pour mise au point
-    caplog.set_level(logging.CRITICAL)  # pour execution très silencieuse
+    # caplog.set_level(logging.CRITICAL)  # pour execution très silencieuse
     # warnings.simplefilter("error", UserWarning) # transforme les warning en exception pour mieux les traquer
     with TaskInstance(app, "TaskPartExport",
                       GetParams=f"filt_uproj={part_project_uvpapp.pprojid}&filt_uproj={part_project_uvpbru.pprojid}"

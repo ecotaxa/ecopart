@@ -76,7 +76,8 @@ def JinjaFormatDateTime(d, format='%Y-%m-%d %H:%M:%S'):
         return ""
     return d.strftime(format)
 
-# Injection d'un filtre Jnja pour l'affichage des dates
+
+# Injection d'un filtre Jinja pour l'affichage des dates
 part_app.jinja_env.filters['datetime'] = JinjaFormatDateTime
 
 # Importation des vues
