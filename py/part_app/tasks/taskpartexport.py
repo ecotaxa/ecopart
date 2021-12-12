@@ -1015,7 +1015,7 @@ class TaskPartExport(AsyncTask):
             if isinstance(statdata, str):
                 statdata = False
             # noinspection PyUnresolvedReferences
-            html = render_template('task/partexport_create.html', header=txt, data=self.param,
+            html = render_template('tasks/partexport_create.html', header=txt, data=self.param,
                                    SampleCount=len(self.param.samples),
                                    RedFilter=",".join(("%s=%s" % (k, v) for k, v in self.param.redfiltres.items())),
                                    TxtFiltres=txt_filtres,
