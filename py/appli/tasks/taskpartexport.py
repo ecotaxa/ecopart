@@ -285,7 +285,7 @@ class TaskPartExport(AsyncTask):
                     group by tranche""".format(GetTaxoHistoWaterVolumeSQLExpr("depth", "middle"))
         logging.info("sql = %s" % sqlhisto)
         logging.info("samples = %s" % samples)
-        # -------------------------- Fichier Particules --------------------------------
+        # -------------------------- Fichier Particules RED --------------------------------
         if as_odv:
             nomfichier = self.writeOdvPart(base_file_name, samples, sqlhisto, zfile, PartRedClassLimit)
         else:  # -------- Particule TSV --------------------------------
@@ -515,7 +515,7 @@ class TaskPartExport(AsyncTask):
                 order by h.datetime,h.depth """.format(ctdsql, depth_filter)
         logging.info("sql = %s" % sqlhisto)
         logging.info("samples = %s" % samples)
-        # -------------------------- Fichier Particules --------------------------------
+        # -------------------------- Fichier Particules DET --------------------------------
         if as_odv:
             nomfichier = self.writeOdvPart(base_file_name, samples, sqlhisto, zfile, PartDetClassLimit)
         else:  # -------- Particule TSV --------------------------------
