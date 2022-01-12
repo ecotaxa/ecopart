@@ -60,12 +60,13 @@ def before_part_request():
     g.user = user
     g.cookieGAOK = request.cookies.get('GAOK', '')
     g.menu = []
-    g.menu.append((ECOTAXA_URL, "EcoTaxa"))
-    g.menu.append((PART_URL, "Particle Module"))
+    g.menu.append((PART_URL, "Home"))
     if user_is_logged:
         g.menu.append((PART_URL + "prj/", "Particle projects management"))
     g.menu.append(("", "SEP"))
     g.menu.append((PART_URL + "Task/listall", "Task Manager"))
+    g.menu.append(("", "SEP"))
+    g.menu.append((ECOTAXA_URL, "EcoTaxa"))
 
     g.useradmin = user_can_administrate_users
     g.appliadmin = user_can_administrate

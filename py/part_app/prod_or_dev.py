@@ -6,5 +6,5 @@
 #
 # Le drapeau ci-dessous permet de basculer d'un comportement à l'autre.
 #
-PROD_BEHAVIOR = False
+PROD_BEHAVIOR = True
 DEV_BEHAVIOR = not PROD_BEHAVIOR

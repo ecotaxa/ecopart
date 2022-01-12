@@ -131,7 +131,7 @@ class AsyncTask:
 
 
 def TaskFactory(ClassName, task=None):
-    # Particle module tasks
+    # EcoPart tasks
     from .taskpartzooscanimport import TaskPartZooscanImport
     if ClassName == "TaskPartZooscanImport":
         return TaskPartZooscanImport(task)

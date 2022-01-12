@@ -1,6 +1,5 @@
 import csv
 import re
-from pathlib import Path
 
 from flask import json, redirect
 from flask import render_template, flash, request, g
@@ -80,7 +79,7 @@ def part_prjedit(pprojid):
                  for prj in ecotaxa_if.get_visible_projects()]
     new_prj_label = 'Create a new EcoTaxa project with same title'
     UvpPrjForm.projid = SelectField('Ecotaxa Project',
-                                    choices=[(0, ''), (-1, new_prj_label)] + zoo_projs,
+                                    choices=[(-1, new_prj_label), (0, '')] + zoo_projs,
                                     coerce=int)
     UvpPrjForm.remote_type = SelectField('Remote type', choices=[(x, x) for x in ("", "ARGO", "TSV LOV")])
     UvpPrjForm.enable_descent_filter = SelectField('Enable descent filter',

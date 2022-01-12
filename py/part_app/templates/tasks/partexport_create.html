@@ -28,8 +28,11 @@
 
   <form class="form-horizontal" method="post" enctype=multipart/form-data id="formtask">
 
-    <a href="#create-project" data-toggle="collapse" class="help">DOWNLOAD OPTIONS<span
-        class="glyphicon glyphicon-info"></span></a></p>
+    <a href="#create-project" data-toggle="collapse" class="help">
+      <span
+        class="glyphicon glyphicon-info"></span>
+    </a>
+    </p>
     <div id="create-project" class="collapse panel panel-default">
       <div class="panel-body">
         <ul>
@@ -41,11 +44,12 @@
           </li>
           <li>3 data formats are available and only authorized data for the selected format (reduced/detailed/raw) will
             be exported.
-            Contact data owners or project managers to request additionnal permissions (see permission explanation in
-            the LANDING PAGE information of the Particle module).
+            Contact data owners or project managers to request additional permissions (see permission explanation in
+            the LANDING PAGE information of EcoPart).
             The ODV data format permits loading the exported data directly into the <a href="https://odv.awi.de/"
                                                                                        target="_blank">Ocean Data View
               application</a></li>
+          <li>All plankton results are based on EcoTaxa validated vignettes (unclassified or predicted objects are ignored).</li>
         </ul>
       </div>
     </div>
@@ -107,9 +111,9 @@
           file (TSV Only)
         </td>
         <td>CTD + PARTICLES abundances and biovolumes sorted in 15 reduced classes at vertical steps of 5m<br>
-          ZOOPLANKTON selected categories at variable vertical steps<br>
-          SUMMARY file (TSV format only) : metadata of exported sample (including pixel size for zooplankton)<br>
-          Apply zooplankton and pressure selections from graph<br>
+          PLANKTON selected categories at variable vertical steps<br>
+          SUMMARY file (TSV format only) : metadata of exported sample (including pixel size for PLANKTON)<br>
+          Apply PLANKTON and pressure selections from graph<br>
           - if you do not select any plankton category, the export will return all catégories<br>
           - if you enable "Sum abundance of children categories", the children counts will be added to the selected
           category
@@ -130,8 +134,8 @@
 
         </td>
         <td>CTD + PARTICLES abundances and biovolumes sorted in 45 detailed classes at vertical steps of 5m<br>
-          ZOOPLANKTON from all categories and summed in parent categories at vertical steps of 5m<br>
-          SUMMARY file (TSV format only) : metadata of exported sample (including pixel size for zooplankton)<br>
+          PLANKTON from all categories and summed in parent categories at vertical steps of 5m<br>
+          SUMMARY file (TSV format only) : metadata of exported sample (including pixel size for PLANKTON)<br>
           Previous screen filter on classification ignored, pressure used
 
         </td>
@@ -145,10 +149,10 @@
         </td>
         <td>
           PARTICLES (UVP) : imported « BRU » data compressed and sorted in 1m bins<br>
-          ZOOPLANKTON : The main measurements (Area, Area excluded, Major, Minor and Mean grey) will be exported with
+          PLANKTON : The main measurements (Area, Area excluded, Major, Minor and Mean grey) will be exported with
           the annotation for each object (possibly excluding not_living items)<br>
           CTD : as imported<br>
-          SUMMARY file : metadata of exported sample (including pixel size for zooplankton)<br>
+          SUMMARY file : metadata of exported sample (including pixel size for PLANKTON)<br>
 
 
         </td>

@@ -52,7 +52,7 @@ def indexPart():
         classif_ids = [int(x) for x in request.args.getlist('taxolb')]
         form.taxolb.choices += ecotaxa_if.get_taxo(classif_ids)
     g.headcenter = """<h1 style='text-align: center;cursor: pointer;' >
-      <span onclick="$('#particleinfodiv').toggle()"><b>PARTICLE</b> module <span class='glyphicon glyphicon-info-sign'></span> </span> 
+      <span onclick="$('#particleinfodiv').toggle()"><b>EcoPart</b> <span class='glyphicon glyphicon-info-sign'></span> </span> 
       <a href='%s' style='font-size:medium;margin-left: 50px;'>Go to EcoTaxa</a></h2>""" % ECOTAXA_URL
     return part_PrintInCharte(ecotaxa_if,
                               render_template('part/index.html', form=form,
@@ -184,29 +184,53 @@ def GetFilteredSamples(ecotaxa_if: EcoTaxaInstance, Filter=None, GetVisibleOnly=
     # Enrichissement avec les infos des projets EcoTaxa
     visible_prjs = ecotaxa_if.get_visible_projects()
     visible_prjs_by_id = {prj.projid: prj for prj in visible_prjs}
+    visib_by_prjid = {}
     for a_line in ret:
-        # TODO: Les permissions sont une constante par project, pas la peine de refaire pour chaque sample
-        ecotaxa_prjid = a_line["projid"]
-        ecotaxa_prj = visible_prjs_by_id.get(ecotaxa_prjid)
         part_visibility, zoo_visibility = a_line["visibility"]
-        if ecotaxa_prj is not None:
-            zoo_visibility = 'V'
-            # Si l'utilisateur peut modifier le projet EcoTaxa, on lui accorde les droits sur le projet EcoPart
-            prj_writers = set([usr.id for usr in ecotaxa_prj.managers])
-            prj_writers.update([usr.id for usr in ecotaxa_prj.annotators])
-            if ecotaxa_user.id in prj_writers or (2 in ecotaxa_user.can_do):
-                part_visibility = 'Y'
-                zoo_visibility = 'Y'
+        ecotaxa_prjid = a_line["projid"]
+        if ecotaxa_prjid in visib_by_prjid:
+            # Les permissions sont une constante par project, pas la peine de refaire pour chaque sample
+            a_line["visibility"], a_line["visible"] = visib_by_prjid[ecotaxa_prjid]
         else:
-            if ecotaxa_prjid is None:
-                zoo_visibility = 'Y'  # Convention pure, il n'y a rien donc on peut le voir et l'exporter
-        a_line["visibility"] = part_visibility + zoo_visibility
-        a_line["visible"] = (part_visibility >= MinimumPartVisibility) and (zoo_visibility >= MinimumZooVisibility)
+            part_visibility, zoo_visibility = adjust_visibilities(part_visibility, zoo_visibility, ecotaxa_prjid,
+                                                                  ecotaxa_user, visible_prjs_by_id)
+            a_line["visibility"] = part_visibility + zoo_visibility
+            a_line["visible"] = (part_visibility >= MinimumPartVisibility) and (zoo_visibility >= MinimumZooVisibility)
+            visib_by_prjid[ecotaxa_prjid] = (a_line["visibility"], a_line["visible"])
     # Re-filtrage si voulu
     if GetVisibleOnly:
         ret = [a_line for a_line in ret
                if a_line["visible"]]
     return ret, visible_prjs
+
+
+def adjust_visibilities(part_visibility, zoo_visibility, ecotaxa_prjid, ecotaxa_user, visible_prjs_by_id):
+    """
+        Les visibilités en entrée sont celles déterminées par les dates. Pour le projet EcoTaxa, c'est
+        éventuellement le droit de voir _rien du tout_, puisque le projet est optionnel.
+        :part_visibility, :zoo_visibility: Droits d'accès avec les conventions N -> V -> Y
+    """
+    ecotaxa_prj = visible_prjs_by_id.get(ecotaxa_prjid)
+    if ecotaxa_prj is not None:
+        # L'utilisateur courant voit le projet dans _sa_ liste. On ne sait pas pourquoi.
+        if ecotaxa_user:
+            # Utilisateur loggé, s'il peut modifier le projet EcoTaxa, on lui accorde les droits sur le projet EcoPart
+            prj_writers = set([usr.id for usr in ecotaxa_prj.managers])
+            prj_writers.update([usr.id for usr in ecotaxa_prj.annotators])
+            if ecotaxa_user and (ecotaxa_user.id in prj_writers or (2 in ecotaxa_user.can_do)):
+                part_visibility = 'Y'
+                zoo_visibility = 'Y'
+        else:
+            # Pas d'utilisateur enregistré
+            pass
+        # Cas visible+date passée
+        # ? liste dans "Show projects in which you are not registered"
+        #zoo_visibility = 'V'
+    else:
+        # Pas de projet EcoTaxa, ou projet invisible de l'utilisateur courant
+        if ecotaxa_prjid is None:
+            zoo_visibility = 'Y'  # Convention pure, il n'y a rien donc on peut le voir et l'exporter
+    return part_visibility, zoo_visibility
 
 
 @part_app.route('/searchsample')

@@ -113,7 +113,7 @@ class TaskPartExport(AsyncTask):
         f.write(
             "//<DataField>Ocean</DataField>\n//<DataType>Profiles</DataType>\n//<Method>Particle abundance and volume "
             "from the Underwater Vision Profiler. The Underwater Video Profiler is designed for the quantification of "
-            "particles and of large zooplankton in the water column. Light reflected by undisturbed target objects "
+            "particles and of large plankton in the water column. Light reflected by undisturbed target objects "
             "forms a dark-field image.</Method>\n")
         for Owner in self.OwnerList:
             f.write("//<Owner1>{}</Owner1>\n".format(Owner))
@@ -948,7 +948,7 @@ class TaskPartExport(AsyncTask):
         ecotaxa_if = EcoTaxaInstance(request)
         backurl = ("%s?{0}" % PART_URL).format(str(request.query_string, 'utf-8'))
         txt = "<a href='{0}'>Back to Particle Module Home page</a>".format(backurl)
-        txt += "<h3>Particle sample data export</h3>"
+        txt += "<h3>Data export (Particle and Plankton)</h3>"
         errors = []
         for k in request.args:
             if k in ('gpr', 'gpd', 'ctd'):
