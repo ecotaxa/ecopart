@@ -162,12 +162,6 @@ position: absolute;z-index: 100;">
 
               </td>
             </tr>
-<!--
-            <tr>
-              <td>Ecotaxa Project</td>
-              <td>{{ form.filt_proj(style="width:100%") }}</td>
-            </tr>
-            -->
             <tr>
               <td>Search Project</td>
               <td>{{ form.filt_uproj(style="width:100%") }}</td>
@@ -411,7 +405,7 @@ position: absolute;z-index: 100;">
     $("#filt_fromdate,#filt_todate").datepicker({
         showButtonPanel: true, changeMonth: true, changeYear: true, dateFormat: "yy-mm-dd"
     });
-    $('#filt_proj,#filt_uproj').select2({closeOnSelect: false});
+    $('#filt_uproj').select2({closeOnSelect: false});
     $('#filt_proftype').select2({minimumResultsForSearch: -1});
     $('#gpr,#gpd,#ctd').select2();
 

@@ -4,8 +4,9 @@
 - back-end uses the same DB sequence as EcoPart temp tasks -> fork the sequence... or not as whole DB will be forked.
 
 - separate temptasks directory for jobs vs tasks -> necessary as precisely, the sequences will evolve in //
-
+BUT:
 - "EcoTaxa folder temptask/task%06d (useful for huge files)"
+-> need to export as well
 
 ----------- DONE -------------
 

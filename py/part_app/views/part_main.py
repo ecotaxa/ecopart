@@ -17,16 +17,7 @@ from ..urls import ECOTAXA_URL
 def indexPart():
     ecotaxa_if = EcoTaxaInstance(request)
 
-    # Liste des projets liés _et visibles_
-    linked_prjs = set([a_ref for a_ref, in GetAll("select distinct projid from part_projects")])
-    prjs = ecotaxa_if.get_visible_projects()
-    prjs.sort(key=lambda p: p.title.lower())
-    prjs = [[prj.projid, "%s(%d)" % (prj.title, prj.projid)]
-            for prj in prjs
-            if prj.projid in linked_prjs]
-
     class FiltForm(Form):
-        filt_proj = SelectMultipleField(choices=[['', '']] + prjs)
         # Tous les projets EcoPart
         filt_uproj = SelectMultipleField(choices=[['', '']] + GetAll(
             "SELECT pprojid,concat(ptitle,' (',cast(pprojid AS VARCHAR),')') "
@@ -225,7 +216,7 @@ def adjust_visibilities(part_visibility, zoo_visibility, ecotaxa_prjid, ecotaxa_
             pass
         # Cas visible+date passée
         # ? liste dans "Show projects in which you are not registered"
-        #zoo_visibility = 'V'
+        # zoo_visibility = 'V'
     else:
         # Pas de projet EcoTaxa, ou projet invisible de l'utilisateur courant
         if ecotaxa_prjid is None:
