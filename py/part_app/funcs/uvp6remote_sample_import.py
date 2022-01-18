@@ -308,7 +308,8 @@ def GenerateParticleHistogram(psampleid: int):
             for i, tranche in enumerate(tranches):
                 sqlparam['lineno'] = i
                 sqlparam['depth'] = round(histo_by_tranche[tranche]['DepthTranche'], 2)
-                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage, VOLUME_ROUNDING)
+                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage,
+                                                VOLUME_ROUNDING)
                 if part_sample.organizedbydeepth:
                     sqlparam['datetime'] = None
                     if DEV_BEHAVIOR:
@@ -335,9 +336,8 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
     if part_sample is None:
         raise Exception("GenerateTaxonomyHistogram: Sample %d missing" % psampleid)
     prj = partdatabase.part_projects.query.filter_by(pprojid=part_sample.pprojid).first()
-    if DEV_BEHAVIOR:
-        ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
-        ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
+    ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
+    ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
     rawfileinvault = GetPathForRawHistoFile(part_sample.psampleid)
     depth_offset = prj.default_depthoffset
     if depth_offset is None:
@@ -357,19 +357,20 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
 
             valid_ids = [x for x in taxo_ids if x > 0]
             if len(valid_ids) == 0:
-                raise Exception("GenerateTaxonomyHistogram: Sample %d no valid category_name_" % psampleid)
+                logging.info("In 'META.txt', no valid category ids (%s) in %d, "
+                             "returning from uvp6remote GenerateTaxonomyHistogram", valid_ids, psampleid)
+                return
             taxo_db = set([tid for tid, _name in ecotaxa_if.get_taxo(valid_ids)])
 
             for i in range(40):
                 if taxo_ids[i] > 0:
                     if taxo_ids[i] not in taxo_db:
-                        raise Exception(
-                            "GenerateTaxonomyHistogram: Sample %d category_name_%d is not a known taxoid" % (
-                                psampleid, (i + 1)))
+                        raise Exception("GenerateTaxonomyHistogram: Sample %d category_name_%d is not a known taxoid" %
+                                        (psampleid, (i + 1)))
 
-        if DEV_BEHAVIOR:
-            if 'taxo2.txt' not in [f.filename.lower() for f in zf.filelist]:
-                return
+        if 'taxo2.txt' not in [f.filename.lower() for f in zf.filelist]:
+            logging.info("No 'taxo2.txt' in %d, returning from uvp6remote GenerateTaxonomyHistogram", psampleid)
+            return
         with zf.open('TAXO2.txt', 'r') as ftaxob:
             ftaxo = io.TextIOWrapper(ftaxob, encoding='latin_1')
             csvfile = csv.DictReader(ftaxo, delimiter='\t')
@@ -391,12 +392,8 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
                 size_par_classe = {}
                 nbr_img = float(L['IMAGE_NUMBER_PLANKTON'])
                 for classe in range(40):
-                    if DEV_BEHAVIOR:
-                        nbr_par_classe[classe] = ToFloat(L['NB_PLANKTON_cat_%s' % (classe + 1,)]) or 0.0
-                        size_par_classe[classe] = ToFloat(L['SIZE_PLANKTON_cat_%s' % (classe + 1,)]) or 0.0
-                    else:
-                        nbr_par_classe[classe] = ToFloat(L['NB_PLANKTON_cat_%s' % (classe + 1,)])
-                        size_par_classe[classe] = ToFloat(L['SIZE_PLANKTON_cat_%s' % (classe + 1,)])
+                    nbr_par_classe[classe] = ToFloat(L['NB_PLANKTON_cat_%s' % (classe + 1,)]) or 0.0
+                    size_par_classe[classe] = ToFloat(L['SIZE_PLANKTON_cat_%s' % (classe + 1,)]) or 0.0
                     size_par_classe[classe] = nbr_par_classe[classe] * size_par_classe[classe] \
                         if size_par_classe[classe] else 0
                 if tranche not in histo_by_tranche:
@@ -415,11 +412,6 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
                             classe]
             logging.info("Line count %d" % nbr_line)
 
-            if DEV_BEHAVIOR:
-                pass
-            else:
-                ExecSQL("delete from part_histocat_lst where psampleid=%s" % psampleid)
-                ExecSQL("delete from part_histocat where psampleid=%s" % psampleid)
             sql = """INSERT INTO part_histocat(psampleid, classif_id, lineno, depth, watervolume, nbr
                                 , avgesd, totalbiovolume)
                     VALUES(%(psampleid)s,%(classif_id)s,%(lineno)s,%(depth)s,%(watervolume)s,%(nbr)s
@@ -429,7 +421,8 @@ def GenerateTaxonomyHistogram(ecotaxa_if: EcoTaxaInstance, psampleid):
             for i, tranche in enumerate(tranches):
                 sqlparam['lineno'] = i
                 sqlparam['depth'] = histo_by_tranche[tranche]['DepthTranche']
-                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage, VOLUME_ROUNDING)
+                sqlparam['watervolume'] = round(histo_by_tranche[tranche]['NbrImg'] * part_sample.acq_volimage,
+                                                VOLUME_ROUNDING)
                 for classe in range(40):
                     if taxo_ids[classe] > 0 and histo_by_tranche[tranche]['NbrParClasse'][classe] > 0:
                         sqlparam['classif_id'] = taxo_ids[classe]
