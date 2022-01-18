@@ -196,15 +196,9 @@ class TaskPartExport(AsyncTask):
                 if self.param.aggregatefiles:
                     ligne.extend([S['ptitle']])
                 ligne.extend([h['depth'], h['watervolume']])
-                if DEV_BEHAVIOR:
-                    partclasslimit = PartClassLimit
-                    ligne.extend((((h['class%02d' % i] / h['watervolume'])
-                                   if h['class%02d' % i] is not None and h['watervolume'] else '')
-                                  for i in range(1, len(partclasslimit))))
-                else:
-                    ligne.extend((((h['class%02d' % i] / h['watervolume'])
-                                   if h['watervolume'] else '')
-                                  for i in range(1, len(PartClassLimit))))
+                ligne.extend((((h['class%02d' % i] / h['watervolume'])
+                               if h['class%02d' % i] is not None and h['watervolume'] else '')
+                              for i in range(1, len(PartClassLimit))))
                 ligne.extend((h['biovol%02d' % i] for i in range(1, len(PartClassLimit))))
                 f.write("\t".join((str(ntcv(x)) for x in ligne)))
                 for c in ctd_fixed_cols:
@@ -234,13 +228,9 @@ class TaskPartExport(AsyncTask):
                     else:
                         ligne[8] = h['fdatetime']
                     ligne.extend([h['depth'], h['watervolume']])
-                    if DEV_BEHAVIOR:
-                        ligne.extend((((h['class%02d' % i] / h['watervolume'])
-                                       if h['class%02d' % i] is not None and h['watervolume'] else '')
-                                      for i in range(1, len(PartClassLimit))))
-                    else:
-                        ligne.extend((((h['class%02d' % i] / h['watervolume']) if h['watervolume'] else '')
-                                      for i in range(1, len(PartClassLimit))))
+                    ligne.extend((((h['class%02d' % i] / h['watervolume'])
+                                   if h['class%02d' % i] is not None and h['watervolume'] else '')
+                                  for i in range(1, len(PartClassLimit))))
                     # Les biovolumes proviennent de la DB (part_histopart_reduit.biovol*) directement
                     # ils sont calculés dans GenerateReducedParticleHistogram
                     biovols = [h['biovol%02d' % i] for i in range(1, len(PartClassLimit))]
