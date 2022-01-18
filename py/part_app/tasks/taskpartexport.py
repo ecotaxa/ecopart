@@ -343,11 +343,10 @@ class TaskPartExport(AsyncTask):
                 order by tranche """.format(depth_filter, GetTaxoHistoWaterVolumeSQLExpr('depth', 'middle'))
 
         if as_odv:  # ------------ RED Categories AS ODV
-            if DEV_BEHAVIOR:
-                if self.param.redfiltres.get('taxochild', '') == '1':
-                    header_suffix = "w/ children"
-                else:
-                    header_suffix = "w/o children"
+            if self.param.redfiltres.get('taxochild', '') == '1':
+                header_suffix = "w/ children"
+            else:
+                header_suffix = "w/o children"
             nomfichier = base_file_name + "_ZOO_odv.txt"
             fichier = os.path.join(self.GetWorkingDir(), nomfichier)
             with open(fichier, 'w', encoding='latin-1') as f:
@@ -558,7 +557,7 @@ class TaskPartExport(AsyncTask):
         where psampleid=%(psampleid)s {0} and classif_id in ({1}) """.format(depth_filter, lstcatwhere)
         # Ajout calcul des cumul sur les parents via une requête récursive qui duplique les données sur toute la hiérarchie
         # Puis qui aggrège à chaque niveau (somme/moyenne)
-        mini_taxo = ["(%s,%s)" % (r["id"], r["pid"] if r["pid"] else "NULL")
+        mini_taxo = ["(%s,%s)" % (r["id"], r["pid"] if r["pid"] else "NULL::integer")
                      for r in lstcat.values()]
         sqlhisto = """WITH recursive subtaxo (id,parent_id) AS (VALUES %s),
         """ % ",".join(mini_taxo)
