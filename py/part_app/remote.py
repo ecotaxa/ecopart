@@ -73,6 +73,17 @@ class EcoTaxaInstance(object):
             if ae.status in (401, 403):
                 return None
 
+    def get_all_users(self) -> List[Tuple[int, str]]:
+        """
+            Return all users, in the form (id, name)
+        """
+        usa = UsersApi(self._get_client())
+        try:
+            return [(usr.id, usr.name) for usr in usa.search_user(by_name='%')]
+        except ApiException as ae:
+            if ae.status in (401, 403):
+                return []
+
     def get_user_by_id(self, userid: int) -> Optional[UserModel]:
         """
             Return any EcoTaxa user information

@@ -69,8 +69,10 @@ def part_prjedit(pprojid):
         model.public_partexport_deferral_month = part_app.config.get('PART_DEFAULT_GENERAL_EXPORT_DELAY', '')
         model.public_zooexport_deferral_month = part_app.config.get('PART_DEFAULT_PLANKTON_EXPORT_DELAY', '')
 
+    all_users = ecotaxa_if.get_all_users()
+    all_users.sort(key=lambda u: u[1].lower())
     UvpPrjForm.ownerid = SelectField('Project Manager',
-                                     choices=GetAll("SELECT id,name FROM users ORDER BY trim(lower(name))"),
+                                     choices=all_users,
                                      coerce=int)
     UvpPrjForm.instrumtype = SelectField('Instrument type',
                                          choices=[(x, x) for x in ("", "uvp5", "uvp6", "lisst", "uvp6remote")])
