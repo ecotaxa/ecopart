@@ -9,7 +9,7 @@ from . import prj
 from .. import database as partdatabase
 from ..app import part_app, db
 from ..db_utils import ExecSQL
-from ..funcs import histograms, uvp_sample_import as sample_import
+from ..funcs import histograms, common_sample_import
 from ..http_utils import gvp
 from ..remote import EcoTaxaInstance
 from ..urls import PART_URL
@@ -83,7 +83,7 @@ class UvpSampleForm(Form):
 
 
 def delete_sample(psampleid):
-    RawHistoFile = Path(sample_import.GetPathForRawHistoFile(psampleid))
+    RawHistoFile = Path(common_sample_import.GetPathForRawHistoFile(psampleid))
     if RawHistoFile.exists():
         RawHistoFile.unlink()
     model = partdatabase.part_samples.query.filter_by(psampleid=psampleid).first()

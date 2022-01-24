@@ -14,9 +14,9 @@ from html.parser import HTMLParser
 
 import numpy as np
 
-from part_app.constants import VOLUME_ROUNDING
-from part_app.funcs.uvp_sample_import import GetPathForRawHistoFile
-from part_app.prod_or_dev import DEV_BEHAVIOR
+from ..constants import VOLUME_ROUNDING
+from ..funcs.common_sample_import import GetPathForRawHistoFile
+from ..prod_or_dev import DEV_BEHAVIOR
 from .. import database as partdatabase
 from ..app import db
 from ..db_utils import ExecSQL

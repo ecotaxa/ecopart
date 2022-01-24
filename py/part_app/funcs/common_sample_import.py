@@ -11,6 +11,7 @@ from .. import database as partdatabase, app
 from ..app import part_app, db
 from ..constants import CTDFixedCol
 from ..db_utils import ExecSQL, GetAll
+from ..fs_utils import CreateDirConcurrentlyIfNeeded
 from ..prod_or_dev import DEV_BEHAVIOR
 from ..txt_utils import EncodeEqualList
 
@@ -176,9 +177,7 @@ def ImportCTD(psampleid, user_name, user_email):
         raise Exception("ImportCTD: Sample %d missing" % psampleid)
     prj = partdatabase.part_projects.query.filter_by(pprojid=uvp_sample.pprojid).first()
     if prj.instrumtype == 'uvp6remote':
-        # Laisser l'import là, sinon pb imports circulaires
-        import uvp_sample_import
-        rawfileinvault = uvp_sample_import.GetPathForRawHistoFile(uvp_sample.psampleid)
+        rawfileinvault = GetPathForRawHistoFile(uvp_sample.psampleid)
         zf = zipfile.ZipFile(rawfileinvault, "r")
         if 'CTD.txt' not in zf.namelist():
             part_app.logger.info("CTD.txt file missing")
@@ -262,3 +261,13 @@ def ImportCTD(psampleid, user_name, user_email):
     uvp_sample.ctd_import_email = user_email
     db.session.commit()
     return True
+
+
+def GetPathForRawHistoFile(psampleid, flash='1'):
+    VaultFolder = "partraw%04d" % (psampleid // 10000)
+    vaultroot = Path(app.VaultRootDir)
+    # creation du repertoire contenant les histogrammes bruts si necessaire
+    CreateDirConcurrentlyIfNeeded(vaultroot / VaultFolder)
+    # si flash est à 0 on ajoute .black dans le nom du fichier
+    return (vaultroot / VaultFolder / (
+            "%04d%s.tsv.bz2" % (psampleid % 10000, '.black' if flash == '0' else ''))).as_posix()

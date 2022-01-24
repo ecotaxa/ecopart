@@ -15,7 +15,7 @@ from .taskmanager import AsyncTask
 from ..app import part_app, db
 from ..constants import PartDetClassLimit, PartRedClassLimit, CTDFixedColByKey
 from ..db_utils import GetAssoc2Col, GetAll
-from ..funcs.uvp_sample_import import GetPathForRawHistoFile
+from ..funcs.common_sample_import import GetPathForRawHistoFile
 from ..http_utils import gvg, gvp
 from ..prod_or_dev import DEV_BEHAVIOR
 from ..remote import EcoTaxaInstance

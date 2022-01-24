@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .uvp_sample_import import GetPathForRawHistoFile
+from .common_sample_import import GetPathForRawHistoFile
 from .. import database as partdatabase, app
 from ..app import db
 from ..constants import PartDetClassLimit

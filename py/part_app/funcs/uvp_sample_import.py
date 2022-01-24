@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import psycopg2.extras
 
+from .common_sample_import import GetPathForRawHistoFile
 from .. import database as partdatabase, app
 from ..app import part_app, db
 from ..constants import PartDetClassLimit, VOLUME_ROUNDING
@@ -165,16 +166,6 @@ def CreateOrUpdateSample(pprojid, headerdata):
                     sample.acq_depthoffset = ToFloat(hw_conf.get('Pressure_offset', ''))
     db.session.commit()
     return sample.psampleid
-
-
-def GetPathForRawHistoFile(psampleid, flash='1'):
-    VaultFolder = "partraw%04d" % (psampleid // 10000)
-    vaultroot = Path(app.VaultRootDir)
-    # creation du repertoire contenant les histogramme brut si necessaire
-    CreateDirConcurrentlyIfNeeded(vaultroot / VaultFolder)
-    # si flash est à 0 on ajoute .black dans le nom du fichier
-    return (vaultroot / VaultFolder / (
-            "%04d%s.tsv.bz2" % (psampleid % 10000, '.black' if flash == '0' else ''))).as_posix()
 
 
 def GetPathForImportGraph(psampleid, suffix, relative_to_vault=False):
