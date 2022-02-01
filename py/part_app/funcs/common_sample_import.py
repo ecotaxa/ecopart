@@ -178,6 +178,7 @@ def ImportCTD(psampleid, user_name, user_email):
     prj = partdatabase.part_projects.query.filter_by(pprojid=uvp_sample.pprojid).first()
     if prj.instrumtype == 'uvp6remote':
         rawfileinvault = GetPathForRawHistoFile(uvp_sample.psampleid)
+        # Il n'y a pas (au 25/01/2022) de data CTD pour les uvp6remote
         zf = zipfile.ZipFile(rawfileinvault, "r")
         if 'CTD.txt' not in zf.namelist():
             part_app.logger.info("CTD.txt file missing")

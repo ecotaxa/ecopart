@@ -278,10 +278,13 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, de
 
                 if organizedbydepth:
                     partition = math.floor(depth)
-                    if dateheuretxt == '':
-                        dateheure = None
-                    else:
+                    nb_tirets = dateheuretxt.count("-")
+                    if nb_tirets == 1:
                         dateheure = datetime.datetime.strptime(dateheuretxt, "%Y%m%d-%H%M%S")
+                    elif nb_tirets == 2:  # avec ms https://github.com/ecotaxa/ecopart/issues/32
+                        dateheure = datetime.datetime.strptime(dateheuretxt, "%Y%m%d-%H%M%S-%f")
+                    else:  # Pas un format valide, ou chaîne vide
+                        dateheure = None
                 else:
                     integrationtime = int(UvpSample.integrationtime)
                     if integrationtime <= 0:
@@ -308,8 +311,8 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, de
                                                                 'time': partition}
                     segmented_data[flash][partition]['imgcount'] += 1
                     if organizedbytime:
-                        segmented_data[flash][partition][
-                            'depth'] += depth  # on va calculer la profondeur moyenne, donc on fait la somme
+                        # on va calculer la profondeur moyenne, donc on fait la somme
+                        segmented_data[flash][partition]['depth'] += depth
                     else:
                         if dateheure:
                             # on va calculer l'heure' moyenne, donc on fait la somme
@@ -344,9 +347,8 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, de
             raw_histo_file = GetPathForRawHistoFile(UvpSample.psampleid, flash)
             with bz2.open(raw_histo_file, 'wt', newline='') as f:
                 cf = csv.writer(f, delimiter='\t')
-                header_cols_name = ["depth", "imgcount", "area", "nbr", "greylimit1", "greylimit2", "greylimit3"]
-                if DEV_BEHAVIOR:
-                    header_cols_name.append("datetime")
+                header_cols_name = ["depth", "imgcount", "area", "nbr",
+                                    "greylimit1", "greylimit2", "greylimit3", "datetime"]
                 cf.writerow(header_cols_name)
                 partition_cles = list(segmented_data[flash].keys())
                 partition_cles.sort()
