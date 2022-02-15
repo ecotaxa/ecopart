@@ -242,7 +242,7 @@ class EcoTaxaInstance(object):
         try:
             a_proj: ProjectModel = pra.project_query(project_id=project_id)
         except ApiException as ae:
-            if ae.status in (401, 403):
+            if ae.status in (401, 403, 404):
                 return None
             else:
                 raise
