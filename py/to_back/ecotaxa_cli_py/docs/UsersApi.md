@@ -4,14 +4,163 @@ All URIs are relative to *https://raw.githubusercontent.com/api*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**create_user**](UsersApi.md#create_user) | **POST** /users/create | Create User
+[**get_admin_users**](UsersApi.md#get_admin_users) | **GET** /users/user_admins | Get Admin Users
 [**get_current_user_prefs**](UsersApi.md#get_current_user_prefs) | **GET** /users/my_preferences/{project_id} | Get Current User Prefs
 [**get_user**](UsersApi.md#get_user) | **GET** /users/{user_id} | Get User
 [**get_users**](UsersApi.md#get_users) | **GET** /users | Get Users
 [**get_users_admins**](UsersApi.md#get_users_admins) | **GET** /users/admins | Get Users Admins
+[**search_organizations**](UsersApi.md#search_organizations) | **GET** /organizations/search | Search Organizations
 [**search_user**](UsersApi.md#search_user) | **GET** /users/search | Search User
 [**set_current_user_prefs**](UsersApi.md#set_current_user_prefs) | **PUT** /users/my_preferences/{project_id} | Set Current User Prefs
 [**show_current_user**](UsersApi.md#show_current_user) | **GET** /users/me | Show Current User
+[**update_user**](UsersApi.md#update_user) | **PUT** /users/{user_id} | Update User
 
+
+# **create_user**
+> object create_user(user_model_with_rights, no_bot=no_bot)
+
+Create User
+
+**Create a new user**, return **NULL upon success.**  🔒 Depending on logged user, different authorizations apply: - An administrator or user administrator can create a user. - An unlogged user can self-create an account. But must eventually provide a no-robot proof. - An ordinary logged user cannot create another account.  If back-end configuration for self-creation check is Google reCAPTCHA, then no_bot is a pair [remote IP, reCAPTCHA response].
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
+    user_model_with_rights = to_back.ecotaxa_cli_py.UserModelWithRights() # UserModelWithRights | 
+no_bot = ['['127.0.0.1', 'ffqsdfsdf''] # list[str] | not-a-robot proof (optional)
+
+    try:
+        # Create User
+        api_response = api_instance.create_user(user_model_with_rights, no_bot=no_bot)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling UsersApi->create_user: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **user_model_with_rights** | [**UserModelWithRights**](UserModelWithRights.md)|  | 
+ **no_bot** | [**list[str]**](str.md)| not-a-robot proof | [optional] 
+
+### Return type
+
+**object**
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **get_admin_users**
+> list[MinUserModel] get_admin_users()
+
+Get Admin Users
+
+**List application administrators**, themselves being users. 🔒 Any authenticated user can access the list.
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
+    
+    try:
+        # Get Admin Users
+        api_response = api_instance.get_admin_users()
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling UsersApi->get_admin_users: %s\n" % e)
+```
+
+### Parameters
+This endpoint does not need any parameter.
+
+### Return type
+
+[**list[MinUserModel]**](MinUserModel.md)
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_current_user_prefs**
 > str get_current_user_prefs(project_id, key)
@@ -90,7 +239,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_user**
-> UserModel get_user(user_id)
+> MinUserModel get_user(user_id)
 
 Get User
 
@@ -144,7 +293,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**UserModel**](UserModel.md)
+[**MinUserModel**](MinUserModel.md)
 
 ### Authorization
 
@@ -164,11 +313,11 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_users**
-> list[UserModel] get_users()
+> list[UserModelWithRights] get_users(ids=ids)
 
 Get Users
 
-Returns the list of **all users** with their information.   🔒 *For admins only.*
+Returns the list of **all users** with their full information, or just some of them if their ids are provided.  🔒 *For admins only.*
 
 ### Example
 
@@ -200,21 +349,25 @@ configuration.access_token = 'YOUR_ACCESS_TOKEN'
 with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
-    
+    ids = '' # str | String containing the list of one or more id separated by non-num char.     **If several ids are provided**, one full info is returned per user. (optional) (default to '')
+
     try:
         # Get Users
-        api_response = api_instance.get_users()
+        api_response = api_instance.get_users(ids=ids)
         pprint(api_response)
     except ApiException as e:
         print("Exception when calling UsersApi->get_users: %s\n" % e)
 ```
 
 ### Parameters
-This endpoint does not need any parameter.
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **ids** | **str**| String containing the list of one or more id separated by non-num char.     **If several ids are provided**, one full info is returned per user. | [optional] [default to &#39;&#39;]
 
 ### Return type
 
-[**list[UserModel]**](UserModel.md)
+[**list[UserModelWithRights]**](UserModelWithRights.md)
 
 ### Authorization
 
@@ -229,19 +382,19 @@ This endpoint does not need any parameter.
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_users_admins**
-> list[UserModel] get_users_admins()
+> list[MinUserModel] get_users_admins()
 
 Get Users Admins
 
-**List users administrators**, themselves being users.
+**List users administrators**, themselves being users. 🔒 Public, no auth.
 
 ### Example
 
-* OAuth Authentication (BearerOrCookieAuth):
 ```python
 from __future__ import print_function
 import time
@@ -254,19 +407,9 @@ configuration = to_back.ecotaxa_cli_py.Configuration(
     host = "https://raw.githubusercontent.com/api"
 )
 
-# The client must configure the authentication and authorization parameters
-# in accordance with the API server security policy.
-# Examples for each auth method are provided below, use the example that
-# satisfies your auth use case.
-
-# Configure OAuth2 access token for authorization: BearerOrCookieAuth
-configuration = to_back.ecotaxa_cli_py.Configuration(
-    host = "https://raw.githubusercontent.com/api"
-)
-configuration.access_token = 'YOUR_ACCESS_TOKEN'
 
 # Enter a context with an instance of the API client
-with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+with to_back.ecotaxa_cli_py.ApiClient() as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
     
@@ -283,11 +426,11 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**list[UserModel]**](UserModel.md)
+[**list[MinUserModel]**](MinUserModel.md)
 
 ### Authorization
 
-[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+No authorization required
 
 ### HTTP request headers
 
@@ -301,8 +444,71 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **search_organizations**
+> list[str] search_organizations(name)
+
+Search Organizations
+
+**Search for organizations.** So far, organizations are just names in users table.
+
+### Example
+
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient() as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
+    name = '%vill%' # str | Search by name, use % for searching with 'any char'.
+
+    try:
+        # Search Organizations
+        api_response = api_instance.search_organizations(name)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling UsersApi->search_organizations: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **name** | **str**| Search by name, use % for searching with &#39;any char&#39;. | 
+
+### Return type
+
+**list[str]**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **search_user**
-> list[UserModel] search_user(by_name=by_name)
+> list[MinUserModel] search_user(by_name=by_name)
 
 Search User
 
@@ -356,7 +562,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
-[**list[UserModel]**](UserModel.md)
+[**list[MinUserModel]**](MinUserModel.md)
 
 ### Authorization
 
@@ -519,6 +725,82 @@ This endpoint does not need any parameter.
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 **200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **update_user**
+> object update_user(user_id, user_model_with_rights)
+
+Update User
+
+**Update the user**, return **NULL upon success.**  🔒 Depending on logged user, different authorizations apply: - An administrator or user administrator can change any field with respect of consistency. - A user can update own password and mail. - An ordinary user cannot update anything for another user.
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
+    user_id = 760 # int | Internal, numeric id of the user.
+user_model_with_rights = to_back.ecotaxa_cli_py.UserModelWithRights() # UserModelWithRights | 
+
+    try:
+        # Update User
+        api_response = api_instance.update_user(user_id, user_model_with_rights)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling UsersApi->update_user: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **user_id** | **int**| Internal, numeric id of the user. | 
+ **user_model_with_rights** | [**UserModelWithRights**](UserModelWithRights.md)|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 

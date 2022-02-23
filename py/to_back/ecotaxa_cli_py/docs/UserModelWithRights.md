@@ -5,6 +5,7 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **id** | **int** | The unique numeric id of this user. | 
 **email** | **str** | User&#39;s email address, as text, used during registration. | 
+**password** | **str** | Encrypted (or not) password. | [optional] 
 **name** | **str** | User&#39;s full name, as text. | 
 **organisation** | **str** | User&#39;s organisation name, as text. | [optional] 
 **active** | **bool** | Whether the user is still active. | [optional] 

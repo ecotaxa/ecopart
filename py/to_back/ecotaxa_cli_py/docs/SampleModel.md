@@ -4,7 +4,7 @@
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **sampleid** | **int** | The sample Id. | 
-**projid** | **int** | The project Id. | [optional] 
+**projid** | **int** | The project Id. | 
 **orig_id** | **str** | Original sample ID from initial TSV load. | 
 **latitude** | **float** | The latitude. | [optional] 
 **longitude** | **float** | The longitude. | [optional] 

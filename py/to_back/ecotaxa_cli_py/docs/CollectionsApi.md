@@ -19,7 +19,7 @@ Method | HTTP request | Description
 
 Collection By Short Title
 
-Return the **single collection with this short title**.  *For published datasets.*  ⚠️ DO NOT MODIFY BEHAVIOR ⚠️ 
+Return the **single collection with this short title**.  *For published datasets.*  ⚠️ DO NOT MODIFY BEHAVIOR ⚠️
 
 ### Example
 
@@ -82,7 +82,7 @@ No authorization required
 
 Collection By Title
 
-Return the **single collection with this title**.  *For published datasets.*  ⚠️ DO NOT MODIFY BEHAVIOR ⚠️ 
+Return the **single collection with this title**.  *For published datasets.*  ⚠️ DO NOT MODIFY BEHAVIOR ⚠️
 
 ### Example
 
@@ -301,7 +301,7 @@ Name | Type | Description  | Notes
 
 Erase Collection
 
-**Delete the collection**,   i.e. the precious fields, as the projects are just linked-at from the collection.  🔒 *For admins only.*
+**Delete the collection**,  i.e. the precious fields, as the projects are just linked-at from the collection.  🔒 *For admins only.*
 
 ### Example
 
