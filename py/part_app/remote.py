@@ -8,7 +8,7 @@ from flask import Request
 from werkzeug.local import LocalProxy
 
 from to_back.ecotaxa_cli_py import ApiClient, TaxonModel, ProjectModel, UserModelWithRights, ApiException, \
-    SampleModel, ObjectSetQueryRsp, UserModel, SampleTaxoStatsModel, TaxaSearchRsp, CreateProjectReq, LoginReq, \
+    SampleModel, ObjectSetQueryRsp, MinUserModel, SampleTaxoStatsModel, TaxaSearchRsp, CreateProjectReq, LoginReq, \
     ProjectFilters
 from to_back.ecotaxa_cli_py.api import AuthentificationApi, TaxonomyTreeApi, ProjectsApi, SamplesApi, UsersApi, \
     ObjectsApi
@@ -84,7 +84,7 @@ class EcoTaxaInstance(object):
             if ae.status in (401, 403):
                 return []
 
-    def get_user_by_id(self, userid: int) -> Optional[UserModel]:
+    def get_user_by_id(self, userid: int) -> Optional[MinUserModel]:
         """
             Return any EcoTaxa user information
         """
@@ -92,7 +92,7 @@ class EcoTaxaInstance(object):
             return self.users_by_id[userid]
         usa = UsersApi(self._get_client())
         try:
-            usr: UserModel = usa.get_user(userid)
+            usr: MinUserModel = usa.get_user(userid)
             ret = usr
         except ApiException as ae:
             if ae.status in (401, 403):
@@ -102,7 +102,7 @@ class EcoTaxaInstance(object):
         self.users_by_id[userid] = ret
         return ret
 
-    def get_users_admins(self) -> List[UserModel]:
+    def get_users_admins(self) -> List[MinUserModel]:
         """
             Return user administrators.
         """
