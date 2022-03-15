@@ -16,9 +16,9 @@ if sys.platform.startswith('win32'):
     sys.path.insert(0,os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), R"..\Python\Lib\site-packages\psycopg2-2.6-py3.4-win32.egg")))
 
 #Le from doit être aprés la modification du path et du chdir
-from appli import app as application
+from part_app.app import part_app as application
 
-handler = logging.handlers.RotatingFileHandler('Ecotaxa.log', maxBytes=1000000, backupCount=2)
+handler = logging.handlers.RotatingFileHandler('Ecopart.log', maxBytes=1000000, backupCount=2)
 #handler.setLevel(logging.INFO) loggue tout par defaut.
 LoggingFormat = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 handler.setFormatter(logging.Formatter(LoggingFormat))
