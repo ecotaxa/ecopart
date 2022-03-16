@@ -4,7 +4,7 @@ Subset request.
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**filters** | **dict(str, str)** | The filters to apply to project. | [optional] 
+**filters** | [**ProjectFiltersDict**](ProjectFiltersDict.md) | The filters to apply to project. | [optional] 
 **dest_prj_id** | **int** | The destination project ID. | 
 **group_type** | [**GroupDefinitions**](GroupDefinitions.md) | Define the groups in which to apply limits. C for categories, S for samples, A for acquisitions. | 
 **limit_type** | [**LimitMethods**](LimitMethods.md) | The type of limit_value: P for %, V for constant, both per group. | 

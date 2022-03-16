@@ -742,7 +742,7 @@ configuration.access_token = 'YOUR_ACCESS_TOKEN'
 with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.ProjectsApi(api_client)
-    ids = '1' # str | String containing the list of one or more id separated by non-num char.     **If several ids are provided**, one stat record will be returned per project.
+    ids = '1' # str | String containing the list of one or more project id separated by non-num char.     **If several ids are provided**, one stat record will be returned per project.
 taxa_ids = '' # str | **If several taxa_ids are provided**, one stat record will be returned per requested taxa, if populated.    **If taxa_ids is all**, all valued taxa in the project(s) are returned. (optional) (default to '')
 
     try:
@@ -757,7 +757,7 @@ taxa_ids = '' # str | **If several taxa_ids are provided**, one stat record will
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **ids** | **str**| String containing the list of one or more id separated by non-num char.     **If several ids are provided**, one stat record will be returned per project. | 
+ **ids** | **str**| String containing the list of one or more project id separated by non-num char.     **If several ids are provided**, one stat record will be returned per project. | 
  **taxa_ids** | **str**| **If several taxa_ids are provided**, one stat record will be returned per requested taxa, if populated.    **If taxa_ids is all**, all valued taxa in the project(s) are returned. | [optional] [default to &#39;&#39;]
 
 ### Return type

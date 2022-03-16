@@ -12,7 +12,7 @@ Name | Type | Description | Notes
 **managers** | [**list[MinUserModel]**](MinUserModel.md) | Managers of this project. | [optional] [default to []]
 **annotators** | [**list[MinUserModel]**](MinUserModel.md) | Annotators of this project, if not manager. | [optional] [default to []]
 **viewers** | [**list[MinUserModel]**](MinUserModel.md) | Viewers of this project, if not manager nor annotator. | [optional] [default to []]
-**instrument** | **str** | This project&#39;s instrument. Transitory: if several of them, then coma-separated. | [optional] 
+**instrument** | **str** | This project&#39;s instrument code. | [optional] 
 **contact** | [**MinUserModel**](MinUserModel.md) | The contact person is a manager who serves as the contact person for other users and EcoTaxa&#39;s managers. | [optional] 
 **highest_right** | **str** | The highest right for requester on this project. One of &#39;Manage&#39;, &#39;Annotate&#39;, &#39;View&#39;. | [optional] [default to '']
 **license** | [**LicenseEnum**](LicenseEnum.md) | Data licence. | [optional] 

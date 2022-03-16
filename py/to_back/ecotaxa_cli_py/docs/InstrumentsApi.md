@@ -12,7 +12,7 @@ Method | HTTP request | Description
 
 Instrument Query
 
-Returns the list of instruments, inside specific project(s).
+Returns the list of instruments, inside specific project(s) or globally.
 
 ### Example
 
@@ -33,7 +33,7 @@ configuration = to_back.ecotaxa_cli_py.Configuration(
 with to_back.ecotaxa_cli_py.ApiClient() as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.InstrumentsApi(api_client)
-    project_ids = '1,2,3' # str | String containing the list of one or more project id separated by non-num char.
+    project_ids = '1,2,3' # str | String containing the list of one or more project ids, separated by non-num char, or 'all' for all instruments.
 
     try:
         # Instrument Query
@@ -47,7 +47,7 @@ with to_back.ecotaxa_cli_py.ApiClient() as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **project_ids** | **str**| String containing the list of one or more project id separated by non-num char. | 
+ **project_ids** | **str**| String containing the list of one or more project ids, separated by non-num char, or &#39;all&#39; for all instruments. | 
 
 ### Return type
 
