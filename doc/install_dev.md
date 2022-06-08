@@ -32,7 +32,7 @@ Créer le repertoire /ecopart pour mettre l'application
 ```bash
 sudo -i
 mkdir /ecopart;chmod 777 /ecopart;chown laurent /ecopart
-apt install python3.9-venv
+apt install python3.8-venv
 mkdir /ecopartvenv;chmod 777 /ecopartvenv;chown laurent /ecopartvenv
 mkdir /ecopartvenvtest;chmod 777 /ecopartvenvtest;chown laurent /ecopartvenvtest
 exit
