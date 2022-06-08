@@ -137,7 +137,7 @@ def GetFilteredSamples(ecotaxa_if: EcoTaxaInstance, Filter=None, GetVisibleOnly=
             s.profileid, s.pprojid, s.sampleid, pp.ptitle, pp.projid
             from part_samples s
             join part_projects pp on s.pprojid = pp.pprojid """
-    sql += " where 1=1 "
+    sql += " where s.latitude!='NaN' AND s.longitude!='NaN' "
 
     if Filter.get("MapN", '') != "" and Filter.get("MapW", '') != "" and Filter.get("MapE", '') != "" and Filter.get(
             "MapS", '') != "":
