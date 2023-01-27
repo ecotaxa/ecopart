@@ -274,24 +274,25 @@ def GenerateRawHistogramUVPAPP(UvpSample, Prj, DepthOffset, organizedbydepth, de
                 pass
             elif int(data[0][0]) == 0:  # taille de particule non valide
                 pass
-            else:  # Données normale
+            else:  # Données normales
+
+                nb_tirets = dateheuretxt.count("-")
+                if nb_tirets == 1:
+                    dateheure = datetime.datetime.strptime(dateheuretxt, "%Y%m%d-%H%M%S")
+                elif nb_tirets == 2:  # avec ms https://github.com/ecotaxa/ecopart/issues/32
+                                       # et https://github.com/ecotaxa/ecopart/issues/60
+                    dateheure = datetime.datetime.strptime(dateheuretxt, "%Y%m%d-%H%M%S-%f")
+                else:  # Pas un format valide ou chaîne vide
+                    dateheure = None
 
                 if organizedbydepth:
                     partition = math.floor(depth)
-                    nb_tirets = dateheuretxt.count("-")
-                    if nb_tirets == 1:
-                        dateheure = datetime.datetime.strptime(dateheuretxt, "%Y%m%d-%H%M%S")
-                    elif nb_tirets == 2:  # avec ms https://github.com/ecotaxa/ecopart/issues/32
-                        dateheure = datetime.datetime.strptime(dateheuretxt, "%Y%m%d-%H%M%S-%f")
-                    else:  # Pas un format valide, ou chaîne vide
-                        dateheure = None
                 else:
                     integrationtime = int(UvpSample.integrationtime)
                     if integrationtime <= 0:
                         raise Exception(
-                            "GenerateRawHistogramUVPAPP: Sample %d : integrationtime must be a positive value for horizontal profile" % [
-                                UvpSample.psampleid])
-                    dateheure = datetime.datetime.strptime(dateheuretxt, "%Y%m%d-%H%M%S")
+                            "GenerateRawHistogramUVPAPP: Sample %d : integrationtime must be a positive value for horizontal profile"
+                            % [UvpSample.psampleid])
                     partts = (dateheure.timestamp() // integrationtime) * integrationtime
                     # Conversion en TimeStamp, regroupement par integration time
                     partition = int(datetime.datetime.fromtimestamp(partts).strftime("%Y%m%d%H%M%S"))
