@@ -144,8 +144,8 @@ class TaskPartExport(AsyncTask):
         nomfichier = base_file_name + "_Export_metadata_summary.tsv"
         fichier = os.path.join(self.GetWorkingDir(), nomfichier)
         with open(fichier, 'w', encoding='latin-1') as f:
-            f.write("profile\tCruise\tSite\tDataOwner\tRawfilename\tInstrument\tCTDrosettefilename"
-                    "\tyyyy-mm-dd hh:mm\tLatitude \tLongitude\taa\texp\tPixel size\tParticle filename"
+            f.write("Profile\tCruise\tSite\tDataOwner\tRawfilename\tInstrument\tCTDrosettefilename"
+                    "\tyyyy-mm-dd hh:mm\tLatitude\tLongitude\taa\texp\tPixel size\tParticle filename"
                     "\tPlankton filename\tProject\n")
 
             for S in samples:
