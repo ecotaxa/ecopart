@@ -1048,7 +1048,7 @@ for_managing = False # bool | Return projects that can be written to (including 
 title_filter = '' # str | Use this pattern for matching returned projects names. (optional) (default to '')
 instrument_filter = '' # str | Only return projects where this instrument was used. (optional) (default to '')
 filter_subset = False # bool | Only return projects having 'subset' in their names. (optional) (default to False)
-order_field = 'instrument' # str | One of ['instrument', 'highest_right', 'projid', 'title', 'visible', 'status', 'objcount', 'pctvalidated', 'pctclassified', 'classifsettings', 'classiffieldlist', 'popoverfieldlist', 'comments', 'description', 'rf_models_used', 'cnn_network_id'] (optional)
+order_field = 'instrument' # str | One of ['instrument', 'instrument_url', 'highest_right', 'projid', 'title', 'visible', 'status', 'objcount', 'pctvalidated', 'pctclassified', 'classifsettings', 'classiffieldlist', 'popoverfieldlist', 'comments', 'description', 'rf_models_used', 'cnn_network_id'] (optional)
 window_start = 0 # int | Skip `window_start` before returning data. (optional)
 window_size = 100 # int | Return only `window_size` lines. (optional)
 
@@ -1070,7 +1070,7 @@ Name | Type | Description  | Notes
  **title_filter** | **str**| Use this pattern for matching returned projects names. | [optional] [default to &#39;&#39;]
  **instrument_filter** | **str**| Only return projects where this instrument was used. | [optional] [default to &#39;&#39;]
  **filter_subset** | **bool**| Only return projects having &#39;subset&#39; in their names. | [optional] [default to False]
- **order_field** | **str**| One of [&#39;instrument&#39;, &#39;highest_right&#39;, &#39;projid&#39;, &#39;title&#39;, &#39;visible&#39;, &#39;status&#39;, &#39;objcount&#39;, &#39;pctvalidated&#39;, &#39;pctclassified&#39;, &#39;classifsettings&#39;, &#39;classiffieldlist&#39;, &#39;popoverfieldlist&#39;, &#39;comments&#39;, &#39;description&#39;, &#39;rf_models_used&#39;, &#39;cnn_network_id&#39;] | [optional] 
+ **order_field** | **str**| One of [&#39;instrument&#39;, &#39;instrument_url&#39;, &#39;highest_right&#39;, &#39;projid&#39;, &#39;title&#39;, &#39;visible&#39;, &#39;status&#39;, &#39;objcount&#39;, &#39;pctvalidated&#39;, &#39;pctclassified&#39;, &#39;classifsettings&#39;, &#39;classiffieldlist&#39;, &#39;popoverfieldlist&#39;, &#39;comments&#39;, &#39;description&#39;, &#39;rf_models_used&#39;, &#39;cnn_network_id&#39;] | [optional] 
  **window_start** | **int**| Skip &#x60;window_start&#x60; before returning data. | [optional] 
  **window_size** | **int**| Return only &#x60;window_size&#x60; lines. | [optional] 
 
