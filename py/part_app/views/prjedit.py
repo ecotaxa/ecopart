@@ -59,8 +59,6 @@ def part_prjedit(pprojid):
             return part_PrintInCharte(ecotaxa_if, ErrorFormat("Access Denied"))
     else:
         # <= 0, i.e. 'créer un nouveau projet'
-        if not ((2 in ecotaxa_user.can_do) or (1 in ecotaxa_user.can_do)):
-            return part_PrintInCharte(ecotaxa_if, ErrorFormat("Access Denied"))
         model = partdatabase.part_projects()
         model.pprojid = 0
         model.ownerid = ecotaxa_user.id

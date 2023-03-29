@@ -66,9 +66,7 @@ def part_prj():
                 a_line['email'] = user.email
     # Tri en mémoire
     res.sort(key=lambda r: (r['title'] if r['title'] else chr(256)) + r['ptitle'])
-    CanCreate = False
-    if (2 in ecotaxa_user.can_do) or (1 in ecotaxa_user.can_do):  # User can Administrate or create projects in EcoTaxa
-        CanCreate = True
+    CanCreate = True #everyone can create projects in ecotaxa
     g.headcenter = "<h4>Particle Projects management</h4><a href='%s'>Particle Module Home</a>" % PART_URL
     return part_PrintInCharte(ecotaxa_if,
                               render_template('part/list.html', PrjList=res, CanCreate=CanCreate,
