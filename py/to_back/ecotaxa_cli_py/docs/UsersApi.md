@@ -4,12 +4,14 @@ All URIs are relative to *https://raw.githubusercontent.com/api*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
+[**activate_user**](UsersApi.md#activate_user) | **POST** /users/activate/{user_id}/{status} | Activate User
 [**create_user**](UsersApi.md#create_user) | **POST** /users/create | Create User
 [**get_admin_users**](UsersApi.md#get_admin_users) | **GET** /users/user_admins | Get Admin Users
 [**get_current_user_prefs**](UsersApi.md#get_current_user_prefs) | **GET** /users/my_preferences/{project_id} | Get Current User Prefs
 [**get_user**](UsersApi.md#get_user) | **GET** /users/{user_id} | Get User
 [**get_users**](UsersApi.md#get_users) | **GET** /users | Get Users
 [**get_users_admins**](UsersApi.md#get_users_admins) | **GET** /users/admins | Get Users Admins
+[**reset_user_password**](UsersApi.md#reset_user_password) | **POST** /users/reset_user_password | Reset User Password
 [**search_organizations**](UsersApi.md#search_organizations) | **GET** /organizations/search | Search Organizations
 [**search_user**](UsersApi.md#search_user) | **GET** /users/search | Search User
 [**set_current_user_prefs**](UsersApi.md#set_current_user_prefs) | **PUT** /users/my_preferences/{project_id} | Set Current User Prefs
@@ -17,8 +19,88 @@ Method | HTTP request | Description
 [**update_user**](UsersApi.md#update_user) | **PUT** /users/{user_id} | Update User
 
 
+# **activate_user**
+> object activate_user(user_id, status, unknown_base_type, no_bot=no_bot)
+
+Activate User
+
+Activate a new user if external validation is on., return **NULL upon success.**  🔒 Depending on logged user, different authorizations apply: - An administrator or user administrator can activate a user or bypass the activation and inform the user when a modification request value/reason is provided. - An ordinary logged user cannot activate another account. If back-end configuration for self-creation check is Google reCAPTCHA, then no_bot is a pair [remote IP, reCAPTCHA response].
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
+    user_id = 1 # int | Internal, the unique numeric id of this user.
+status = '1' # str | Internal, the status name assign to this user.
+unknown_base_type = to_back.ecotaxa_cli_py.UNKNOWN_BASE_TYPE() # UNKNOWN_BASE_TYPE | 
+no_bot = ['['127.0.0.1', 'ffqsdfsdf']'] # list[str] | not-a-robot proof (optional)
+
+    try:
+        # Activate User
+        api_response = api_instance.activate_user(user_id, status, unknown_base_type, no_bot=no_bot)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling UsersApi->activate_user: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **user_id** | **int**| Internal, the unique numeric id of this user. | 
+ **status** | **str**| Internal, the status name assign to this user. | 
+ **unknown_base_type** | [**UNKNOWN_BASE_TYPE**](UNKNOWN_BASE_TYPE.md)|  | 
+ **no_bot** | [**list[str]**](str.md)| not-a-robot proof | [optional] 
+
+### Return type
+
+**object**
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **create_user**
-> object create_user(user_model_with_rights, no_bot=no_bot)
+> object create_user(user_model_with_rights, no_bot=no_bot, token=token)
 
 Create User
 
@@ -55,11 +137,12 @@ with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
     user_model_with_rights = to_back.ecotaxa_cli_py.UserModelWithRights() # UserModelWithRights | 
-no_bot = ['['127.0.0.1', 'ffqsdfsdf''] # list[str] | not-a-robot proof (optional)
+no_bot = ['['127.0.0.1', 'ffqsdfsdf']'] # list[str] | not-a-robot proof (optional)
+token = 'token_example' # str | token in the url to validate request (optional)
 
     try:
         # Create User
-        api_response = api_instance.create_user(user_model_with_rights, no_bot=no_bot)
+        api_response = api_instance.create_user(user_model_with_rights, no_bot=no_bot, token=token)
         pprint(api_response)
     except ApiException as e:
         print("Exception when calling UsersApi->create_user: %s\n" % e)
@@ -71,6 +154,7 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **user_model_with_rights** | [**UserModelWithRights**](UserModelWithRights.md)|  | 
  **no_bot** | [**list[str]**](str.md)| not-a-robot proof | [optional] 
+ **token** | **str**| token in the url to validate request | [optional] 
 
 ### Return type
 
@@ -444,6 +528,84 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **reset_user_password**
+> object reset_user_password(reset_password_req, no_bot=no_bot, token=token)
+
+Reset User Password
+
+reset user password **return NULL on success**  🔒 Depending on logged user, different authorizations apply: - An administrator or user administrator can reset a user password. - An unlogged user can ask for a reset  in two steps. and receive a mail with a token. But must eventually provide a no-robot proof.  If back-end configuration for self-creation check is Google reCAPTCHA, then no_bot is a pair [remote IP, reCAPTCHA response].
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
+    reset_password_req = to_back.ecotaxa_cli_py.ResetPasswordReq() # ResetPasswordReq | 
+no_bot = ['['127.0.0.1', 'ffqsdfsdf']'] # list[str] | not-a-robot proof (optional)
+token = 'token_example' # str | token in the url to validate request (optional)
+
+    try:
+        # Reset User Password
+        api_response = api_instance.reset_user_password(reset_password_req, no_bot=no_bot, token=token)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling UsersApi->reset_user_password: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **reset_password_req** | [**ResetPasswordReq**](ResetPasswordReq.md)|  | 
+ **no_bot** | [**list[str]**](str.md)| not-a-robot proof | [optional] 
+ **token** | **str**| token in the url to validate request | [optional] 
+
+### Return type
+
+**object**
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **search_organizations**
 > list[str] search_organizations(name)
 
@@ -512,7 +674,7 @@ No authorization required
 
 Search User
 
-**Search users using various criteria**, search is case insensitive and might contain % chars.
+**Search users using various criteria**, search is case-insensitive and might contain % chars.
 
 ### Example
 

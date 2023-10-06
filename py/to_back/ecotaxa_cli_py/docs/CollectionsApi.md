@@ -7,11 +7,13 @@ Method | HTTP request | Description
 [**collection_by_short_title**](CollectionsApi.md#collection_by_short_title) | **GET** /collections/by_short_title | Collection By Short Title
 [**collection_by_title**](CollectionsApi.md#collection_by_title) | **GET** /collections/by_title | Collection By Title
 [**create_collection**](CollectionsApi.md#create_collection) | **POST** /collections/create | Create Collection
-[**darwin_core_format_export**](CollectionsApi.md#darwin_core_format_export) | **GET** /collections/{collection_id}/export/darwin_core | Emodnet Format Export
+[**darwin_core_format_export**](CollectionsApi.md#darwin_core_format_export) | **POST** /collections/export/darwin_core | Emodnet Format Export
 [**erase_collection**](CollectionsApi.md#erase_collection) | **DELETE** /collections/{collection_id} | Erase Collection
 [**get_collection**](CollectionsApi.md#get_collection) | **GET** /collections/{collection_id} | Get Collection
+[**get_collection_taxonomy_recast**](CollectionsApi.md#get_collection_taxonomy_recast) | **GET** /collections/{collection_id}/taxo_recast | Read Collection Taxo Recast
 [**search_collections**](CollectionsApi.md#search_collections) | **GET** /collections/search | Search Collections
 [**update_collection**](CollectionsApi.md#update_collection) | **PUT** /collections/{collection_id} | Update Collection
+[**update_collection_taxonomy_recast**](CollectionsApi.md#update_collection_taxonomy_recast) | **PUT** /collections/{collection_id}/taxo_recast | Update Collection Taxo Recast
 
 
 # **collection_by_short_title**
@@ -145,7 +147,7 @@ No authorization required
 
 Create Collection
 
-**Create a collection** with at least one project inside.  Returns the created collection Id.  🔒 *For admins only.*
+**Create a collection** with at least one project inside.  Returns the created collection Id.  Note: 'manage' right is required on all underlying projects.
 
 ### Example
 
@@ -215,11 +217,11 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **darwin_core_format_export**
-> DarwinCoreExportRsp darwin_core_format_export(collection_id, dry_run, with_zeroes, auto_morpho, with_computations)
+> ExportRsp darwin_core_format_export(darwin_core_export_req)
 
 Emodnet Format Export
 
-**Export the collection in Darwin Core format, e.g. for EMODnet portal**, @see https://www.emodnet-ingestion.eu  Produces a DwC-A (https://dwc.tdwg.org/) archive into a temporary directory, ready for download.  Maybe useful, a reader in Python: https://python-dwca-reader.readthedocs.io/en/latest/index.html  🔒 *For admins only.*
+**Export the collection in Darwin Core format, e.g. for EMODnet portal**, @see https://www.emodnet-ingestion.eu  Produces a DwC-A (https://dwc.tdwg.org/) archive into a temporary directory, ready for download.  Maybe useful, a reader in Python: https://python-dwca-reader.readthedocs.io/en/latest/index.html  Note: Only manageable collections can be exported.
 
 ### Example
 
@@ -251,15 +253,11 @@ configuration.access_token = 'YOUR_ACCESS_TOKEN'
 with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.CollectionsApi(api_client)
-    collection_id = 1 # int | Internal, the unique numeric id of this collection.
-dry_run = false # bool | If set, then only a diagnostic of doability will be done.
-with_zeroes = false # bool | If set, then *absent* records will be generated, in the relevant samples, for categories present in other samples.
-auto_morpho = false # bool | If set, then any object classified on a Morpho category will be added to the count of the nearest Phylo parent, upward in the tree.
-with_computations = false # bool | If set, then an attempt will be made to compute organisms concentrations and biovolumes.
+    darwin_core_export_req = to_back.ecotaxa_cli_py.DarwinCoreExportReq() # DarwinCoreExportReq | 
 
     try:
         # Emodnet Format Export
-        api_response = api_instance.darwin_core_format_export(collection_id, dry_run, with_zeroes, auto_morpho, with_computations)
+        api_response = api_instance.darwin_core_format_export(darwin_core_export_req)
         pprint(api_response)
     except ApiException as e:
         print("Exception when calling CollectionsApi->darwin_core_format_export: %s\n" % e)
@@ -269,15 +267,11 @@ with_computations = false # bool | If set, then an attempt will be made to compu
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **collection_id** | **int**| Internal, the unique numeric id of this collection. | 
- **dry_run** | **bool**| If set, then only a diagnostic of doability will be done. | 
- **with_zeroes** | **bool**| If set, then *absent* records will be generated, in the relevant samples, for categories present in other samples. | 
- **auto_morpho** | **bool**| If set, then any object classified on a Morpho category will be added to the count of the nearest Phylo parent, upward in the tree. | 
- **with_computations** | **bool**| If set, then an attempt will be made to compute organisms concentrations and biovolumes. | 
+ **darwin_core_export_req** | [**DarwinCoreExportReq**](DarwinCoreExportReq.md)|  | 
 
 ### Return type
 
-[**DarwinCoreExportRsp**](DarwinCoreExportRsp.md)
+[**ExportRsp**](ExportRsp.md)
 
 ### Authorization
 
@@ -285,7 +279,7 @@ Name | Type | Description  | Notes
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
+ - **Content-Type**: application/json
  - **Accept**: application/json
 
 ### HTTP response details
@@ -301,7 +295,7 @@ Name | Type | Description  | Notes
 
 Erase Collection
 
-**Delete the collection**,  i.e. the precious fields, as the projects are just linked-at from the collection.  🔒 *For admins only.*
+**Delete the collection**,  i.e. the precious fields, as the projects are just linked-at from the collection.  Note: Only manageable collections can be deleted.
 
 ### Example
 
@@ -375,7 +369,7 @@ Name | Type | Description  | Notes
 
 Get Collection
 
-Returns **information about the collection** corresponding to the given id.   🔒 *For admins only.*
+Returns **information about the collection** corresponding to the given id.  Note: The collection is returned only if manageable.
 
 ### Example
 
@@ -444,12 +438,86 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **get_collection_taxonomy_recast**
+> object get_collection_taxonomy_recast(collection_id)
+
+Read Collection Taxo Recast
+
+**Read the collection taxonomy recast**.   **Returns NULL upon success.**   Note: The collection data is returned only if manageable.
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.CollectionsApi(api_client)
+    collection_id = 1 # int | Internal, the unique numeric id of this collection.
+
+    try:
+        # Read Collection Taxo Recast
+        api_response = api_instance.get_collection_taxonomy_recast(collection_id)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling CollectionsApi->get_collection_taxonomy_recast: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **collection_id** | **int**| Internal, the unique numeric id of this collection. | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **search_collections**
 > list[CollectionModel] search_collections(title)
 
 Search Collections
 
-**Search for collections.**  🔒 *For admins only.*
+**Search for collections.**  Note: Only manageable collections are returned.
 
 ### Example
 
@@ -523,7 +591,7 @@ Name | Type | Description  | Notes
 
 Update Collection
 
-**Update the collection**. Note that some updates are silently failing when not compatible  with the composing projects.   **Returns NULL upon success.**   🔒 *For admins only.*
+**Update the collection**. Note that some updates are silently failing when not compatible  with the composing projects.   **Returns NULL upon success.**   Note: The collection is updated only if manageable.
 
 ### Example
 
@@ -572,6 +640,82 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **collection_id** | **int**| Internal, the unique numeric id of this collection. | 
  **collection_model** | [**CollectionModel**](CollectionModel.md)|  | 
+
+### Return type
+
+**object**
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: application/json
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **update_collection_taxonomy_recast**
+> object update_collection_taxonomy_recast(collection_id, taxonomy_recast)
+
+Update Collection Taxo Recast
+
+**Create or Update the collection taxonomy recast**.   **Returns NULL upon success.**   Note: The collection is updated only if manageable.
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.CollectionsApi(api_client)
+    collection_id = 1 # int | Internal, the unique numeric id of this collection.
+taxonomy_recast = to_back.ecotaxa_cli_py.TaxonomyRecast() # TaxonomyRecast | 
+
+    try:
+        # Update Collection Taxo Recast
+        api_response = api_instance.update_collection_taxonomy_recast(collection_id, taxonomy_recast)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling CollectionsApi->update_collection_taxonomy_recast: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **collection_id** | **int**| Internal, the unique numeric id of this collection. | 
+ **taxonomy_recast** | [**TaxonomyRecast**](TaxonomyRecast.md)|  | 
 
 ### Return type
 
