@@ -11,7 +11,7 @@ def _ToFloat(value):
         return None
 
 
-def ConvTextDegreeDotMinuteToDecimalDegree(v):
+def ConvTextDegreeDotMinuteToDecimalDegree(v, instrumtype):
     """
     Converti une lattitude ou longitude texte en version flottante degrés decimaux.
     Format possibles :
@@ -29,10 +29,13 @@ def ConvTextDegreeDotMinuteToDecimalDegree(v):
             0])  # on ajoute les minutes en fraction des degrés avec le même signe que la partie dégrés
         return round(parties[0], 5)
     else:
-        v = _ToFloat(v)
-        # format historique la partie decimale etait exprimée en minutes
-        f, i = math.modf(v)
-        return round(i + (f / 0.6), 5)
+        if instrumtype == 'uvp5':
+            v = _ToFloat(v)
+            # format historique uvp5 : la partie decimale etait exprimée en minutes
+            f, i = math.modf(v)
+            return round(i + (f / 0.6), 5)
+        else:
+            return round(_ToFloat(v), 5)
 
 
 def calcpixelfromesd_aa_exp(esd, aa, exp):

@@ -56,8 +56,8 @@ def CreateOrUpdateSample(pprojid, headerdata):
                   sampledatetxt)  # YYYYMMDD-HHMMSS avec tiret central et secondes optionnelles
     sample.sampledate = datetime.datetime(*[int(x) if x else 0 for x in m.group(1, 2, 3, 4, 5, 6)])
     sample.latitude = ConvTextDegreeDotMinuteToDecimalDegree(
-        headerdata['latitude'])  # dans les fichiers UVP historique c'est la notation degree.minute
-    sample.longitude = ConvTextDegreeDotMinuteToDecimalDegree(headerdata['longitude'])
+        headerdata['latitude'], prj.instrumtype)  # dans les fichiers UVP historique c'est la notation degree.minute
+    sample.longitude = ConvTextDegreeDotMinuteToDecimalDegree(headerdata['longitude'], prj.instrumtype)
     # Nouvelle colonne optionnelle, par défaut organisé par (P)ression
     sample.organizedbydeepth = headerdata.get('sampletype', 'P') == 'P'
     # 2020-05-01 : ce champ est à present actualisé lors du traitement du sample
