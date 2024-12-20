@@ -71,7 +71,7 @@ def part_prjedit(pprojid):
     UvpPrjForm.projid = SelectField('Ecotaxa Project',
                                     choices=[(0, ''), (-1, 'Create a new EcoTaxa project')] + database.GetAll("""
                                                 SELECT projid,concat(title,' (',cast(projid as varchar),')') 
-                                                FROM projects ORDER BY lower(title)"""),
+                                                FROM projects ORDER BY projid"""),
                                     coerce=int)
     UvpPrjForm.remote_type = SelectField('Remote type', choices=[(x, x) for x in ("", "ARGO", "TSV LOV")])
     UvpPrjForm.enable_descent_filter = SelectField('Enable descent filter',
