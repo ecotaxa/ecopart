@@ -74,12 +74,17 @@ def part_prjedit(pprojid):
                                      coerce=int)
     UvpPrjForm.instrumtype = SelectField('Instrument type',
                                          choices=[(x, x) for x in ("", "uvp5", "uvp6", "lisst", "uvp6remote")])
-    # On récupère les projets visibles pour remplir la liste de sélection
+    
+    # Fetch the visible projects to populate the selection list
     zoo_projs = [(prj.projid, "%s (%d)" % (prj.title, prj.projid))
                  for prj in ecotaxa_if.get_visible_projects()]
+
+    # Sort by projid in descending order
+    zoo_projs_sorted = sorted(zoo_projs, key=lambda x: x[0], reverse=True)
+    
     new_prj_label = 'Create a new EcoTaxa project with same title'
     UvpPrjForm.projid = SelectField('Ecotaxa Project',
-                                    choices=[(-1, new_prj_label), (0, '')] + zoo_projs,
+                                    choices=[(-1, new_prj_label), (0, '')] + zoo_projs_sorted,
                                     coerce=int)
     UvpPrjForm.remote_type = SelectField('Remote type', choices=[(x, x) for x in ("", "ARGO", "TSV LOV")])
     UvpPrjForm.enable_descent_filter = SelectField('Enable descent filter',
