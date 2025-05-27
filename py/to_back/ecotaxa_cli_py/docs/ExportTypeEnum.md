@@ -1,6 +1,6 @@
 # ExportTypeEnum
 
-An enumeration.
+Externally deprecated
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------

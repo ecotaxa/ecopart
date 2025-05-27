@@ -12,7 +12,6 @@ Method | HTTP request | Description
 [**get_users**](UsersApi.md#get_users) | **GET** /users | Get Users
 [**get_users_admins**](UsersApi.md#get_users_admins) | **GET** /users/admins | Get Users Admins
 [**reset_user_password**](UsersApi.md#reset_user_password) | **POST** /users/reset_user_password | Reset User Password
-[**search_organizations**](UsersApi.md#search_organizations) | **GET** /organizations/search | Search Organizations
 [**search_user**](UsersApi.md#search_user) | **GET** /users/search | Search User
 [**set_current_user_prefs**](UsersApi.md#set_current_user_prefs) | **PUT** /users/my_preferences/{project_id} | Set Current User Prefs
 [**show_current_user**](UsersApi.md#show_current_user) | **GET** /users/me | Show Current User
@@ -397,7 +396,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_users**
-> list[UserModelWithRights] get_users(ids=ids)
+> list[UserModelWithRights] get_users(ids=ids, fields=fields)
 
 Get Users
 
@@ -434,10 +433,11 @@ with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
     ids = '' # str | String containing the list of one or more id separated by non-num char.     **If several ids are provided**, one full info is returned per user. (optional) (default to '')
+fields = '*default' # str | Return the default fields (typically used in conjunction with an additional field list). For users list display purpose. (optional) (default to '*default')
 
     try:
         # Get Users
-        api_response = api_instance.get_users(ids=ids)
+        api_response = api_instance.get_users(ids=ids, fields=fields)
         pprint(api_response)
     except ApiException as e:
         print("Exception when calling UsersApi->get_users: %s\n" % e)
@@ -448,6 +448,7 @@ with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **ids** | **str**| String containing the list of one or more id separated by non-num char.     **If several ids are provided**, one full info is returned per user. | [optional] [default to &#39;&#39;]
+ **fields** | **str**| Return the default fields (typically used in conjunction with an additional field list). For users list display purpose. | [optional] [default to &#39;*default&#39;]
 
 ### Return type
 
@@ -596,69 +597,6 @@ Name | Type | Description  | Notes
 ### HTTP request headers
 
  - **Content-Type**: application/json
- - **Accept**: application/json
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-**200** | Successful Response |  -  |
-**422** | Validation Error |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-
-# **search_organizations**
-> list[str] search_organizations(name)
-
-Search Organizations
-
-**Search for organizations.** So far, organizations are just names in users table.
-
-### Example
-
-```python
-from __future__ import print_function
-import time
-import to_back.ecotaxa_cli_py
-from to_back.ecotaxa_cli_py.rest import ApiException
-from pprint import pprint
-# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
-# See configuration.py for a list of all supported configuration parameters.
-configuration = to_back.ecotaxa_cli_py.Configuration(
-    host = "https://raw.githubusercontent.com/api"
-)
-
-
-# Enter a context with an instance of the API client
-with to_back.ecotaxa_cli_py.ApiClient() as api_client:
-    # Create an instance of the API class
-    api_instance = to_back.ecotaxa_cli_py.UsersApi(api_client)
-    name = '%vill%' # str | Search by name, use % for searching with 'any char'.
-
-    try:
-        # Search Organizations
-        api_response = api_instance.search_organizations(name)
-        pprint(api_response)
-    except ApiException as e:
-        print("Exception when calling UsersApi->search_organizations: %s\n" % e)
-```
-
-### Parameters
-
-Name | Type | Description  | Notes
-------------- | ------------- | ------------- | -------------
- **name** | **str**| Search by name, use % for searching with &#39;any char&#39;. | 
-
-### Return type
-
-**list[str]**
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
- - **Content-Type**: Not defined
  - **Accept**: application/json
 
 ### HTTP response details

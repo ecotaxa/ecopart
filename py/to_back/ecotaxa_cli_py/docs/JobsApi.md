@@ -162,7 +162,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_job_file**
-> object get_job_file(job_id)
+> object get_job_file(job_id, range=range)
 
 Get Job File
 
@@ -199,10 +199,11 @@ with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.JobsApi(api_client)
     job_id = 47445 # int | Internal, the unique numeric id of this job.
+range = 'range_example' # str |  (optional)
 
     try:
         # Get Job File
-        api_response = api_instance.get_job_file(job_id)
+        api_response = api_instance.get_job_file(job_id, range=range)
         pprint(api_response)
     except ApiException as e:
         print("Exception when calling JobsApi->get_job_file: %s\n" % e)
@@ -213,6 +214,7 @@ with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **job_id** | **int**| Internal, the unique numeric id of this job. | 
+ **range** | **str**|  | [optional] 
 
 ### Return type
 

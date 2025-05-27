@@ -254,7 +254,7 @@ class EcoTaxaInstance(object):
         """
         pra = ProjectsApi(self._get_client())
         try:
-            req = CreateProjectReq(title=title, visible=False)
+            req = CreateProjectReq(title=title, access="0")
             new_projid = pra.create_project(create_project_req=req)
         except ApiException as ae:
             if ae.status in (401, 403):

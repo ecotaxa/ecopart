@@ -7,12 +7,15 @@ Method | HTTP request | Description
 [**create_project**](ProjectsApi.md#create_project) | **POST** /projects/create | Create Project
 [**erase_project**](ProjectsApi.md#erase_project) | **DELETE** /projects/{project_id} | Erase Project
 [**import_file**](ProjectsApi.md#import_file) | **POST** /file_import/{project_id} | Import File
+[**list_projects**](ProjectsApi.md#list_projects) | **GET** /projects | List Projects
 [**project_check**](ProjectsApi.md#project_check) | **GET** /projects/{project_id}/check | Project Check
+[**project_collections**](ProjectsApi.md#project_collections) | **GET** /projects/{project_id}/collections | Project Collections
 [**project_merge**](ProjectsApi.md#project_merge) | **POST** /projects/{project_id}/merge | Project Merge
 [**project_query**](ProjectsApi.md#project_query) | **GET** /projects/{project_id} | Project Query
 [**project_recompute_geography**](ProjectsApi.md#project_recompute_geography) | **POST** /projects/{project_id}/recompute_geo | Project Recompute Geography
 [**project_recompute_sunpos**](ProjectsApi.md#project_recompute_sunpos) | **POST** /projects/{project_id}/recompute_sunpos | Project Recompute Sunpos
 [**project_set_get_column_stats**](ProjectsApi.md#project_set_get_column_stats) | **GET** /project_set/column_stats | Project Set Get Column Stats
+[**project_set_get_projects**](ProjectsApi.md#project_set_get_projects) | **GET** /project_set/projects | Project Set Get Projects
 [**project_set_get_stats**](ProjectsApi.md#project_set_get_stats) | **GET** /project_set/taxo_stats | Project Set Get Stats
 [**project_set_get_user_stats**](ProjectsApi.md#project_set_get_user_stats) | **GET** /project_set/user_stats | Project Set Get User Stats
 [**project_stats**](ProjectsApi.md#project_stats) | **GET** /projects/{project_id}/stats | Project Stats
@@ -249,6 +252,92 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **list_projects**
+> list[ProjectModel] list_projects(project_ids=project_ids, not_granted=not_granted, for_managing=for_managing, order_field=order_field, fields=fields, window_start=window_start, window_size=window_size)
+
+List Projects
+
+Returns **projects which the current user has explicit permission to access, with fields options.**  Note that, for performance reasons, in returned ProjectModels, field 'highest_rank' is NOT valued (unlike in simple query). The same information can be found in 'managers', 'annotators' and 'viewers' lists.
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.ProjectsApi(api_client)
+    project_ids = '123,45' # str | Limit the list to a set of ids. (optional)
+not_granted = False # bool | Return projects on which the current user has _no permission_, but visible to him/her. (optional) (default to False)
+for_managing = False # bool | Return projects that can be written to (including erased) by the current user. (optional) (default to False)
+order_field = 'instrument' # str | One of ['projid', 'title', 'visible', 'access', 'status', 'objcount', 'pctvalidated', 'pctclassified', 'classifsettings', 'classiffieldlist', 'popoverfieldlist', 'comments', 'description', 'rf_models_used', 'cnn_network_id', 'formulae', 'instrument', 'instrument_url', 'highest_right'] (optional)
+fields = '*default' # str | Return the default fields (typically used in conjunction with an additional field list). For users list display purpose. (optional) (default to '*default')
+window_start = 0 # int | Skip `window_start` before returning data. (optional)
+window_size = 100 # int | Return only `window_size` lines. (optional)
+
+    try:
+        # List Projects
+        api_response = api_instance.list_projects(project_ids=project_ids, not_granted=not_granted, for_managing=for_managing, order_field=order_field, fields=fields, window_start=window_start, window_size=window_size)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling ProjectsApi->list_projects: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **project_ids** | **str**| Limit the list to a set of ids. | [optional] 
+ **not_granted** | **bool**| Return projects on which the current user has _no permission_, but visible to him/her. | [optional] [default to False]
+ **for_managing** | **bool**| Return projects that can be written to (including erased) by the current user. | [optional] [default to False]
+ **order_field** | **str**| One of [&#39;projid&#39;, &#39;title&#39;, &#39;visible&#39;, &#39;access&#39;, &#39;status&#39;, &#39;objcount&#39;, &#39;pctvalidated&#39;, &#39;pctclassified&#39;, &#39;classifsettings&#39;, &#39;classiffieldlist&#39;, &#39;popoverfieldlist&#39;, &#39;comments&#39;, &#39;description&#39;, &#39;rf_models_used&#39;, &#39;cnn_network_id&#39;, &#39;formulae&#39;, &#39;instrument&#39;, &#39;instrument_url&#39;, &#39;highest_right&#39;] | [optional] 
+ **fields** | **str**| Return the default fields (typically used in conjunction with an additional field list). For users list display purpose. | [optional] [default to &#39;*default&#39;]
+ **window_start** | **int**| Skip &#x60;window_start&#x60; before returning data. | [optional] 
+ **window_size** | **int**| Return only &#x60;window_size&#x60; lines. | [optional] 
+
+### Return type
+
+[**list[ProjectModel]**](ProjectModel.md)
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **project_check**
 > list[str] project_check(project_id)
 
@@ -305,6 +394,80 @@ Name | Type | Description  | Notes
 ### Return type
 
 **list[str]**
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **project_collections**
+> list[MinimalCollectionBO] project_collections(project_id)
+
+Project Collections
+
+**Returns project collections list of id, title
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.ProjectsApi(api_client)
+    project_id = 1 # int | Internal, numeric id of the project.
+
+    try:
+        # Project Collections
+        api_response = api_instance.project_collections(project_id)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling ProjectsApi->project_collections: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **project_id** | **int**| Internal, numeric id of the project. | 
+
+### Return type
+
+[**list[MinimalCollectionBO]**](MinimalCollectionBO.md)
 
 ### Authorization
 
@@ -705,6 +868,82 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
+# **project_set_get_projects**
+> list[ProjectColumnsModel] project_set_get_projects(ids, fields=fields)
+
+Project Set Get Projects
+
+**Returns projects statistics**, i.e. used taxa and classification states.
+
+### Example
+
+* OAuth Authentication (BearerOrCookieAuth):
+```python
+from __future__ import print_function
+import time
+import to_back.ecotaxa_cli_py
+from to_back.ecotaxa_cli_py.rest import ApiException
+from pprint import pprint
+# Defining the host is optional and defaults to https://raw.githubusercontent.com/api
+# See configuration.py for a list of all supported configuration parameters.
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+
+# The client must configure the authentication and authorization parameters
+# in accordance with the API server security policy.
+# Examples for each auth method are provided below, use the example that
+# satisfies your auth use case.
+
+# Configure OAuth2 access token for authorization: BearerOrCookieAuth
+configuration = to_back.ecotaxa_cli_py.Configuration(
+    host = "https://raw.githubusercontent.com/api"
+)
+configuration.access_token = 'YOUR_ACCESS_TOKEN'
+
+# Enter a context with an instance of the API client
+with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
+    # Create an instance of the API class
+    api_instance = to_back.ecotaxa_cli_py.ProjectsApi(api_client)
+    ids = '1' # str | String containing the list of one or more project id separated by non-num char.     **If several ids are provided**, one stat record will be returned per project.
+fields = '*default' # str | Return the default fields (typically used in conjunction with an additional field list). To return selected fields. (optional) (default to '*default')
+
+    try:
+        # Project Set Get Projects
+        api_response = api_instance.project_set_get_projects(ids, fields=fields)
+        pprint(api_response)
+    except ApiException as e:
+        print("Exception when calling ProjectsApi->project_set_get_projects: %s\n" % e)
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **ids** | **str**| String containing the list of one or more project id separated by non-num char.     **If several ids are provided**, one stat record will be returned per project. | 
+ **fields** | **str**| Return the default fields (typically used in conjunction with an additional field list). To return selected fields. | [optional] [default to &#39;*default&#39;]
+
+### Return type
+
+[**list[ProjectColumnsModel]**](ProjectColumnsModel.md)
+
+### Authorization
+
+[BearerOrCookieAuth](../README.md#BearerOrCookieAuth)
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+**200** | Successful Response |  -  |
+**422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
 # **project_set_get_stats**
 > list[ProjectTaxoStatsModel] project_set_get_stats(ids, taxa_ids=taxa_ids)
 
@@ -1006,7 +1245,7 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **search_projects**
-> list[ProjectModel] search_projects(also_others=also_others, not_granted=not_granted, for_managing=for_managing, title_filter=title_filter, instrument_filter=instrument_filter, filter_subset=filter_subset, order_field=order_field, window_start=window_start, window_size=window_size)
+> list[ProjectModel] search_projects(also_others=also_others, not_granted=not_granted, for_managing=for_managing, title_filter=title_filter, instrument_filter=instrument_filter, filter_subset=filter_subset, order_field=order_field, fields=fields, window_start=window_start, window_size=window_size)
 
 Search Projects
 
@@ -1048,13 +1287,14 @@ for_managing = False # bool | Return projects that can be written to (including 
 title_filter = '' # str | Use this pattern for matching returned projects names. (optional) (default to '')
 instrument_filter = '' # str | Only return projects where this instrument was used. (optional) (default to '')
 filter_subset = False # bool | Only return projects having 'subset' in their names. (optional) (default to False)
-order_field = 'instrument' # str | One of ['instrument', 'instrument_url', 'highest_right', 'projid', 'title', 'visible', 'status', 'objcount', 'pctvalidated', 'pctclassified', 'classifsettings', 'classiffieldlist', 'popoverfieldlist', 'comments', 'description', 'rf_models_used', 'cnn_network_id'] (optional)
+order_field = 'instrument' # str | One of ['projid', 'title', 'visible', 'access', 'status', 'objcount', 'pctvalidated', 'pctclassified', 'classifsettings', 'classiffieldlist', 'popoverfieldlist', 'comments', 'description', 'rf_models_used', 'cnn_network_id', 'formulae', 'instrument', 'instrument_url', 'highest_right'] (optional)
+fields = '*default' # str | Return the default fields (typically used in conjunction with an additional field list). For users list display purpose. (optional) (default to '*default')
 window_start = 0 # int | Skip `window_start` before returning data. (optional)
 window_size = 100 # int | Return only `window_size` lines. (optional)
 
     try:
         # Search Projects
-        api_response = api_instance.search_projects(also_others=also_others, not_granted=not_granted, for_managing=for_managing, title_filter=title_filter, instrument_filter=instrument_filter, filter_subset=filter_subset, order_field=order_field, window_start=window_start, window_size=window_size)
+        api_response = api_instance.search_projects(also_others=also_others, not_granted=not_granted, for_managing=for_managing, title_filter=title_filter, instrument_filter=instrument_filter, filter_subset=filter_subset, order_field=order_field, fields=fields, window_start=window_start, window_size=window_size)
         pprint(api_response)
     except ApiException as e:
         print("Exception when calling ProjectsApi->search_projects: %s\n" % e)
@@ -1070,7 +1310,8 @@ Name | Type | Description  | Notes
  **title_filter** | **str**| Use this pattern for matching returned projects names. | [optional] [default to &#39;&#39;]
  **instrument_filter** | **str**| Only return projects where this instrument was used. | [optional] [default to &#39;&#39;]
  **filter_subset** | **bool**| Only return projects having &#39;subset&#39; in their names. | [optional] [default to False]
- **order_field** | **str**| One of [&#39;instrument&#39;, &#39;instrument_url&#39;, &#39;highest_right&#39;, &#39;projid&#39;, &#39;title&#39;, &#39;visible&#39;, &#39;status&#39;, &#39;objcount&#39;, &#39;pctvalidated&#39;, &#39;pctclassified&#39;, &#39;classifsettings&#39;, &#39;classiffieldlist&#39;, &#39;popoverfieldlist&#39;, &#39;comments&#39;, &#39;description&#39;, &#39;rf_models_used&#39;, &#39;cnn_network_id&#39;] | [optional] 
+ **order_field** | **str**| One of [&#39;projid&#39;, &#39;title&#39;, &#39;visible&#39;, &#39;access&#39;, &#39;status&#39;, &#39;objcount&#39;, &#39;pctvalidated&#39;, &#39;pctclassified&#39;, &#39;classifsettings&#39;, &#39;classiffieldlist&#39;, &#39;popoverfieldlist&#39;, &#39;comments&#39;, &#39;description&#39;, &#39;rf_models_used&#39;, &#39;cnn_network_id&#39;, &#39;formulae&#39;, &#39;instrument&#39;, &#39;instrument_url&#39;, &#39;highest_right&#39;] | [optional] 
+ **fields** | **str**| Return the default fields (typically used in conjunction with an additional field list). For users list display purpose. | [optional] [default to &#39;*default&#39;]
  **window_start** | **int**| Skip &#x60;window_start&#x60; before returning data. | [optional] 
  **window_size** | **int**| Return only &#x60;window_size&#x60; lines. | [optional] 
 
