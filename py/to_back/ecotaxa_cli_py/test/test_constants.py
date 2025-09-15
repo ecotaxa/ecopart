@@ -51,7 +51,10 @@ class TestConstants(unittest.TestCase):
                 recaptchaid = True, 
                 formulae = 'subsample_coef: 1/ssm.sub_part
 total_water_volume: sam.tot_vol/1000
-individual_volume: 4.0/3.0*math.pi*(math.sqrt(obj.area/math.pi)*ssm.pixel_size)**3'
+individual_volume: 4.0/3.0*math.pi*(math.sqrt(obj.area/math.pi)*ssm.pixel_size)**3', 
+                default_project_access = '1', 
+                max_upload_size = 56, 
+                time_to_live = '0'
             )
         else :
             return Constants(

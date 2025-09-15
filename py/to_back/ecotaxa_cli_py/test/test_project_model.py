@@ -38,7 +38,6 @@ class TestProjectModel(unittest.TestCase):
             return ProjectModel(
                 projid = 4824, 
                 title = 'MyProject', 
-                visible = False, 
                 access = '1', 
                 status = 'Annotate', 
                 objcount = 32292.0, 

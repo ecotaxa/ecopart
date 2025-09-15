@@ -20,6 +20,9 @@ Name | Type | Description | Notes
 **formulae** | **str** | Project default concentration formulae | [optional] [default to '''subsample_coef: 1/ssm.sub_part
 total_water_volume: sam.tot_vol/1000
 individual_volume: 4.0/3.0*math.pi*(math.sqrt(obj.area/math.pi)*ssm.pixel_size)**3''']
+**default_project_access** | **str** | Project default access level | [optional] [default to '1']
+**max_upload_size** | **int** | My Files max file upload size (bytes) | [optional] [default to 681574400]
+**time_to_live** | **str** | My Files number of days before deleting directories | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

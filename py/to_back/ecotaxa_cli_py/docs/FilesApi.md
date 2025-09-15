@@ -6,7 +6,7 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**list_common_files**](FilesApi.md#list_common_files) | **GET** /common_files/ | List Common Files
 [**list_user_files**](FilesApi.md#list_user_files) | **GET** /my_files/{sub_path} | List User Files
-[**post_user_file**](FilesApi.md#post_user_file) | **POST** /my_files/ | Put User File
+[**post_user_file**](FilesApi.md#post_user_file) | **POST** /my_files | Put User File
 
 
 # **list_common_files**

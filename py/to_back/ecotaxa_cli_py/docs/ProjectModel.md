@@ -6,7 +6,6 @@ Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **projid** | **int** | The project Id. | 
 **title** | **str** | The project title. | 
-**visible** | **bool** | The project visibility. (deprecated)  | [optional] 
 **access** | **str** | When \&quot;1\&quot; (PUBLIC), the project is visible by all users.PUBLIC: \&quot;1\&quot;, OPEN: \&quot;2\&quot;, PRIVATE: \&quot;0\&quot; | 
 **status** | **str** | The project status. | [optional] 
 **objcount** | **float** | The number of objects. | [optional] 

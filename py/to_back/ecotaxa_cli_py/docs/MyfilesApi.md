@@ -48,7 +48,7 @@ configuration.access_token = 'YOUR_ACCESS_TOKEN'
 with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.MyfilesApi(api_client)
-    source_path = 'source_path_example' # str | The client-side full path of the file or directory to be moved. (optional)
+    source_path = 'source_path_example' # str | The path of the file or directory to be moved. (optional)
 
     try:
         # Create File
@@ -62,7 +62,7 @@ with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **source_path** | **str**| The client-side full path of the file or directory to be moved. | [optional] 
+ **source_path** | **str**| The path of the file or directory to be moved. | [optional] 
 
 ### Return type
 
@@ -196,8 +196,8 @@ configuration.access_token = 'YOUR_ACCESS_TOKEN'
 with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.MyfilesApi(api_client)
-    source_path = 'source_path_example' # str | The client-side full path of the file or directory to be moved. (optional)
-dest_path = 'dest_path_example' # str | The client-side full path of the destination file or directory. (optional)
+    source_path = 'source_path_example' # str | The  path of the file or directory to be moved. (optional)
+dest_path = 'dest_path_example' # str | The path of the destination file or directory. (optional)
 
     try:
         # Move File
@@ -211,8 +211,8 @@ dest_path = 'dest_path_example' # str | The client-side full path of the destina
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **source_path** | **str**| The client-side full path of the file or directory to be moved. | [optional] 
- **dest_path** | **str**| The client-side full path of the destination file or directory. | [optional] 
+ **source_path** | **str**| The  path of the file or directory to be moved. | [optional] 
+ **dest_path** | **str**| The path of the destination file or directory. | [optional] 
 
 ### Return type
 
@@ -273,7 +273,7 @@ with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.MyfilesApi(api_client)
     file = '/path/to/file' # file | 
-path = 'path_example' # str | The client-side full path of the file. (optional)
+path = 'path_example' # str | The destination path of the file. (optional)
 
     try:
         # Put My File
@@ -288,7 +288,7 @@ path = 'path_example' # str | The client-side full path of the file. (optional)
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **file** | **file**|  | 
- **path** | **str**| The client-side full path of the file. | [optional] 
+ **path** | **str**| The destination path of the file. | [optional] 
 
 ### Return type
 
@@ -348,7 +348,7 @@ configuration.access_token = 'YOUR_ACCESS_TOKEN'
 with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
     api_instance = to_back.ecotaxa_cli_py.MyfilesApi(api_client)
-    source_path = 'source_path_example' # str | The client-side full path of the file  or directory to be removed. (optional)
+    source_path = 'source_path_example' # str | The path of the file  or directory to be removed. * for all files and directories (optional)
 
     try:
         # Remove File
@@ -362,7 +362,7 @@ with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **source_path** | **str**| The client-side full path of the file  or directory to be removed. | [optional] 
+ **source_path** | **str**| The path of the file  or directory to be removed. * for all files and directories | [optional] 
 
 ### Return type
 

@@ -76,7 +76,7 @@ Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 *FilesApi* | [**list_common_files**](to_back/ecotaxa_cli_py/docs/FilesApi.md#list_common_files) | **GET** /common_files/ | List Common Files
 *FilesApi* | [**list_user_files**](to_back/ecotaxa_cli_py/docs/FilesApi.md#list_user_files) | **GET** /my_files/{sub_path} | List User Files
-*FilesApi* | [**post_user_file**](to_back/ecotaxa_cli_py/docs/FilesApi.md#post_user_file) | **POST** /my_files/ | Put User File
+*FilesApi* | [**post_user_file**](to_back/ecotaxa_cli_py/docs/FilesApi.md#post_user_file) | **POST** /my_files | Put User File
 *MyfilesApi* | [**create_my_file**](to_back/ecotaxa_cli_py/docs/MyfilesApi.md#create_my_file) | **POST** /user_files/create/ | Create File
 *MyfilesApi* | [**list_my_files**](to_back/ecotaxa_cli_py/docs/MyfilesApi.md#list_my_files) | **GET** /user_files/{sub_path} | List My Files
 *MyfilesApi* | [**move_my_file**](to_back/ecotaxa_cli_py/docs/MyfilesApi.md#move_my_file) | **POST** /user_files/mv/ | Move File

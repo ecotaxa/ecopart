@@ -377,7 +377,7 @@ class FilesApi(object):
         auth_settings = ['BearerOrCookieAuth']  # noqa: E501
 
         return self.api_client.call_api(
-            '/my_files/', 'POST',
+            '/my_files', 'POST',
             path_params,
             query_params,
             header_params,
