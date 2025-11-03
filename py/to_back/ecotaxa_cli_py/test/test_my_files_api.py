@@ -15,23 +15,23 @@ from __future__ import absolute_import
 import unittest
 
 import to_back.ecotaxa_cli_py
-from to_back.ecotaxa_cli_py.api.files_api import FilesApi  # noqa: E501
+from to_back.ecotaxa_cli_py.api.my_files_api import MyFilesApi  # noqa: E501
 from to_back.ecotaxa_cli_py.rest import ApiException
 
 
-class TestFilesApi(unittest.TestCase):
-    """FilesApi unit test stubs"""
+class TestMyFilesApi(unittest.TestCase):
+    """MyFilesApi unit test stubs"""
 
     def setUp(self):
-        self.api = to_back.ecotaxa_cli_py.api.files_api.FilesApi()  # noqa: E501
+        self.api = to_back.ecotaxa_cli_py.api.my_files_api.MyFilesApi()  # noqa: E501
 
     def tearDown(self):
         pass
 
-    def test_list_common_files(self):
-        """Test case for list_common_files
+    def test_create_user_file(self):
+        """Test case for create_user_file
 
-        List Common Files  # noqa: E501
+        Create User File  # noqa: E501
         """
         pass
 
@@ -42,10 +42,24 @@ class TestFilesApi(unittest.TestCase):
         """
         pass
 
+    def test_move_user_file(self):
+        """Test case for move_user_file
+
+        Move User File  # noqa: E501
+        """
+        pass
+
     def test_post_user_file(self):
         """Test case for post_user_file
 
         Put User File  # noqa: E501
+        """
+        pass
+
+    def test_remove_user_file(self):
+        """Test case for remove_user_file
+
+        Remove User File  # noqa: E501
         """
         pass
 

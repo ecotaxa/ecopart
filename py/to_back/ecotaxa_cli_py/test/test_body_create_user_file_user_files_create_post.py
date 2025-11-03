@@ -16,11 +16,11 @@ import unittest
 import datetime
 
 import to_back.ecotaxa_cli_py
-from to_back.ecotaxa_cli_py.models.body_remove_file_user_files_rm_post import BodyRemoveFileUserFilesRmPost  # noqa: E501
+from to_back.ecotaxa_cli_py.models.body_create_user_file_user_files_create_post import BodyCreateUserFileUserFilesCreatePost  # noqa: E501
 from to_back.ecotaxa_cli_py.rest import ApiException
 
-class TestBodyRemoveFileUserFilesRmPost(unittest.TestCase):
-    """BodyRemoveFileUserFilesRmPost unit test stubs"""
+class TestBodyCreateUserFileUserFilesCreatePost(unittest.TestCase):
+    """BodyCreateUserFileUserFilesCreatePost unit test stubs"""
 
     def setUp(self):
         pass
@@ -29,21 +29,21 @@ class TestBodyRemoveFileUserFilesRmPost(unittest.TestCase):
         pass
 
     def make_instance(self, include_optional):
-        """Test BodyRemoveFileUserFilesRmPost
+        """Test BodyCreateUserFileUserFilesCreatePost
             include_option is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # model = to_back.ecotaxa_cli_py.models.body_remove_file_user_files_rm_post.BodyRemoveFileUserFilesRmPost()  # noqa: E501
+        # model = to_back.ecotaxa_cli_py.models.body_create_user_file_user_files_create_post.BodyCreateUserFileUserFilesCreatePost()  # noqa: E501
         if include_optional :
-            return BodyRemoveFileUserFilesRmPost(
+            return BodyCreateUserFileUserFilesCreatePost(
                 source_path = '0'
             )
         else :
-            return BodyRemoveFileUserFilesRmPost(
+            return BodyCreateUserFileUserFilesCreatePost(
         )
 
-    def testBodyRemoveFileUserFilesRmPost(self):
-        """Test BodyRemoveFileUserFilesRmPost"""
+    def testBodyCreateUserFileUserFilesCreatePost(self):
+        """Test BodyCreateUserFileUserFilesCreatePost"""
         inst_req_only = self.make_instance(include_optional=False)
         inst_req_and_optional = self.make_instance(include_optional=True)
 

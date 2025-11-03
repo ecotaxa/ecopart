@@ -67,7 +67,6 @@ symetrieh=symetrieh
 circ.=circ
 feret = Feret [pixel]', 
                 comments = '0', 
-                description = '0', 
                 rf_models_used = '0', 
                 cnn_network_id = 'SCN_zooscan_group1', 
                 formulae = '0', 

@@ -15,7 +15,6 @@ Name | Type | Description | Notes
 **classiffieldlist** | **str** |  | [optional] 
 **popoverfieldlist** | **str** |  | [optional] 
 **comments** | **str** | The project comments. | [optional] 
-**description** | **str** | The project description, i.e. main traits. | [optional] 
 **rf_models_used** | **str** |  | [optional] 
 **cnn_network_id** | **str** |  | [optional] 
 **formulae** | **str** | Concentration formulae. | [optional] 

@@ -1,4 +1,4 @@
-# BodyMoveFileUserFilesMvPost
+# BodyMoveUserFileUserFilesMvPost
 
 ## Properties
 Name | Type | Description | Notes

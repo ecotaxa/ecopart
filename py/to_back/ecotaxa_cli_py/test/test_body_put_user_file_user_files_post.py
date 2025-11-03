@@ -16,11 +16,11 @@ import unittest
 import datetime
 
 import to_back.ecotaxa_cli_py
-from to_back.ecotaxa_cli_py.models.body_create_file_user_files_create_post import BodyCreateFileUserFilesCreatePost  # noqa: E501
+from to_back.ecotaxa_cli_py.models.body_put_user_file_user_files_post import BodyPutUserFileUserFilesPost  # noqa: E501
 from to_back.ecotaxa_cli_py.rest import ApiException
 
-class TestBodyCreateFileUserFilesCreatePost(unittest.TestCase):
-    """BodyCreateFileUserFilesCreatePost unit test stubs"""
+class TestBodyPutUserFileUserFilesPost(unittest.TestCase):
+    """BodyPutUserFileUserFilesPost unit test stubs"""
 
     def setUp(self):
         pass
@@ -29,21 +29,23 @@ class TestBodyCreateFileUserFilesCreatePost(unittest.TestCase):
         pass
 
     def make_instance(self, include_optional):
-        """Test BodyCreateFileUserFilesCreatePost
+        """Test BodyPutUserFileUserFilesPost
             include_option is a boolean, when False only required
             params are included, when True both required and
             optional params are included """
-        # model = to_back.ecotaxa_cli_py.models.body_create_file_user_files_create_post.BodyCreateFileUserFilesCreatePost()  # noqa: E501
+        # model = to_back.ecotaxa_cli_py.models.body_put_user_file_user_files_post.BodyPutUserFileUserFilesPost()  # noqa: E501
         if include_optional :
-            return BodyCreateFileUserFilesCreatePost(
-                source_path = '0'
+            return BodyPutUserFileUserFilesPost(
+                file = bytes(b'blah'), 
+                path = '0'
             )
         else :
-            return BodyCreateFileUserFilesCreatePost(
+            return BodyPutUserFileUserFilesPost(
+                file = bytes(b'blah'),
         )
 
-    def testBodyCreateFileUserFilesCreatePost(self):
-        """Test BodyCreateFileUserFilesCreatePost"""
+    def testBodyPutUserFileUserFilesPost(self):
+        """Test BodyPutUserFileUserFilesPost"""
         inst_req_only = self.make_instance(include_optional=False)
         inst_req_and_optional = self.make_instance(include_optional=True)
 

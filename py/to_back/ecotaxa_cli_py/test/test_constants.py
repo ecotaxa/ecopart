@@ -54,7 +54,8 @@ total_water_volume: sam.tot_vol/1000
 individual_volume: 4.0/3.0*math.pi*(math.sqrt(obj.area/math.pi)*ssm.pixel_size)**3', 
                 default_project_access = '1', 
                 max_upload_size = 56, 
-                time_to_live = '0'
+                time_to_live = '0', 
+                all_in_one = True
             )
         else :
             return Constants(

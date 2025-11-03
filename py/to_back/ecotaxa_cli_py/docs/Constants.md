@@ -23,6 +23,7 @@ individual_volume: 4.0/3.0*math.pi*(math.sqrt(obj.area/math.pi)*ssm.pixel_size)*
 **default_project_access** | **str** | Project default access level | [optional] [default to '1']
 **max_upload_size** | **int** | My Files max file upload size (bytes) | [optional] [default to 681574400]
 **time_to_live** | **str** | My Files number of days before deleting directories | [optional] 
+**all_in_one** | **bool** | local install - run without network access | [optional] [default to False]
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

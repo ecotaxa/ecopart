@@ -56,7 +56,7 @@ configuration.access_token = 'YOUR_ACCESS_TOKEN'
 # Enter a context with an instance of the API client
 with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
     # Create an instance of the API class
-    api_instance = to_back.ecotaxa_cli_py.FilesApi(api_client)
+    api_instance = to_back.ecotaxa_cli_py.CommonFilesApi(api_client)
     path = '/ftp_plankton/Ecotaxa_Exported_data' # str | 
 
     try:
@@ -64,7 +64,7 @@ with to_back.ecotaxa_cli_py.ApiClient(configuration) as api_client:
         api_response = api_instance.list_common_files(path)
         pprint(api_response)
     except ApiException as e:
-        print("Exception when calling FilesApi->list_common_files: %s\n" % e)
+        print("Exception when calling CommonFilesApi->list_common_files: %s\n" % e)
     
 ```
 
@@ -74,14 +74,12 @@ All URIs are relative to *https://raw.githubusercontent.com/api*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
-*FilesApi* | [**list_common_files**](to_back/ecotaxa_cli_py/docs/FilesApi.md#list_common_files) | **GET** /common_files/ | List Common Files
-*FilesApi* | [**list_user_files**](to_back/ecotaxa_cli_py/docs/FilesApi.md#list_user_files) | **GET** /my_files/{sub_path} | List User Files
-*FilesApi* | [**post_user_file**](to_back/ecotaxa_cli_py/docs/FilesApi.md#post_user_file) | **POST** /my_files | Put User File
-*MyfilesApi* | [**create_my_file**](to_back/ecotaxa_cli_py/docs/MyfilesApi.md#create_my_file) | **POST** /user_files/create/ | Create File
-*MyfilesApi* | [**list_my_files**](to_back/ecotaxa_cli_py/docs/MyfilesApi.md#list_my_files) | **GET** /user_files/{sub_path} | List My Files
-*MyfilesApi* | [**move_my_file**](to_back/ecotaxa_cli_py/docs/MyfilesApi.md#move_my_file) | **POST** /user_files/mv/ | Move File
-*MyfilesApi* | [**post_my_file**](to_back/ecotaxa_cli_py/docs/MyfilesApi.md#post_my_file) | **POST** /user_files/ | Put My File
-*MyfilesApi* | [**remove_my_file**](to_back/ecotaxa_cli_py/docs/MyfilesApi.md#remove_my_file) | **POST** /user_files/rm/ | Remove File
+*CommonFilesApi* | [**list_common_files**](to_back/ecotaxa_cli_py/docs/CommonFilesApi.md#list_common_files) | **GET** /common_files/ | List Common Files
+*MyFilesApi* | [**create_user_file**](to_back/ecotaxa_cli_py/docs/MyFilesApi.md#create_user_file) | **POST** /user_files/create/ | Create User File
+*MyFilesApi* | [**list_user_files**](to_back/ecotaxa_cli_py/docs/MyFilesApi.md#list_user_files) | **GET** /user_files/{sub_path} | List User Files
+*MyFilesApi* | [**move_user_file**](to_back/ecotaxa_cli_py/docs/MyFilesApi.md#move_user_file) | **POST** /user_files/mv/ | Move User File
+*MyFilesApi* | [**post_user_file**](to_back/ecotaxa_cli_py/docs/MyFilesApi.md#post_user_file) | **POST** /user_files/ | Put User File
+*MyFilesApi* | [**remove_user_file**](to_back/ecotaxa_cli_py/docs/MyFilesApi.md#remove_user_file) | **POST** /user_files/rm/ | Remove User File
 *TaxonomyTreeApi* | [**add_taxon_in_central**](to_back/ecotaxa_cli_py/docs/TaxonomyTreeApi.md#add_taxon_in_central) | **PUT** /taxon/central | Add Taxon In Central
 *TaxonomyTreeApi* | [**get_taxon_in_central**](to_back/ecotaxa_cli_py/docs/TaxonomyTreeApi.md#get_taxon_in_central) | **GET** /taxon/central/{taxon_id} | Get Taxon In Central
 *TaxonomyTreeApi* | [**pull_taxa_update_from_central**](to_back/ecotaxa_cli_py/docs/TaxonomyTreeApi.md#pull_taxa_update_from_central) | **GET** /taxa/pull_from_central | Pull Taxa Update From Central
@@ -199,16 +197,15 @@ Class | Method | HTTP request | Description
  - [AccessLevelEnum](to_back/ecotaxa_cli_py/docs/AccessLevelEnum.md)
  - [AcquisitionModel](to_back/ecotaxa_cli_py/docs/AcquisitionModel.md)
  - [BackupExportReq](to_back/ecotaxa_cli_py/docs/BackupExportReq.md)
- - [BodyCreateFileUserFilesCreatePost](to_back/ecotaxa_cli_py/docs/BodyCreateFileUserFilesCreatePost.md)
+ - [BodyCreateUserFileUserFilesCreatePost](to_back/ecotaxa_cli_py/docs/BodyCreateUserFileUserFilesCreatePost.md)
  - [BodyExportObjectSetBackupObjectSetExportBackupPost](to_back/ecotaxa_cli_py/docs/BodyExportObjectSetBackupObjectSetExportBackupPost.md)
  - [BodyExportObjectSetGeneralObjectSetExportGeneralPost](to_back/ecotaxa_cli_py/docs/BodyExportObjectSetGeneralObjectSetExportGeneralPost.md)
  - [BodyExportObjectSetObjectSetExportPost](to_back/ecotaxa_cli_py/docs/BodyExportObjectSetObjectSetExportPost.md)
  - [BodyExportObjectSetSummaryObjectSetExportSummaryPost](to_back/ecotaxa_cli_py/docs/BodyExportObjectSetSummaryObjectSetExportSummaryPost.md)
- - [BodyMoveFileUserFilesMvPost](to_back/ecotaxa_cli_py/docs/BodyMoveFileUserFilesMvPost.md)
+ - [BodyMoveUserFileUserFilesMvPost](to_back/ecotaxa_cli_py/docs/BodyMoveUserFileUserFilesMvPost.md)
  - [BodyPredictObjectSetObjectSetPredictPost](to_back/ecotaxa_cli_py/docs/BodyPredictObjectSetObjectSetPredictPost.md)
- - [BodyPutMyFileUserFilesPost](to_back/ecotaxa_cli_py/docs/BodyPutMyFileUserFilesPost.md)
- - [BodyPutUserFileMyFilesPost](to_back/ecotaxa_cli_py/docs/BodyPutUserFileMyFilesPost.md)
- - [BodyRemoveFileUserFilesRmPost](to_back/ecotaxa_cli_py/docs/BodyRemoveFileUserFilesRmPost.md)
+ - [BodyPutUserFileUserFilesPost](to_back/ecotaxa_cli_py/docs/BodyPutUserFileUserFilesPost.md)
+ - [BodyRemoveUserFileUserFilesRmPost](to_back/ecotaxa_cli_py/docs/BodyRemoveUserFileUserFilesRmPost.md)
  - [BulkUpdateReq](to_back/ecotaxa_cli_py/docs/BulkUpdateReq.md)
  - [ClassifyAutoReq](to_back/ecotaxa_cli_py/docs/ClassifyAutoReq.md)
  - [ClassifyAutoReqMult](to_back/ecotaxa_cli_py/docs/ClassifyAutoReqMult.md)
