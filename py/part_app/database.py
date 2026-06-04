@@ -61,7 +61,7 @@ class part_samples(db.Model):
     project = db.relationship("part_projects")
     profileid = db.Column(VARCHAR(250), nullable=False)
     filename = db.Column(VARCHAR(250), nullable=False)
-    sampleid = db.Column(INTEGER)  # Decoupled now: ,db.ForeignKey('samples.sampleid'))
+    sampleid = db.Column(BIGINT)  # Decoupled now: ,db.ForeignKey('samples.sampleid'))
     # sample=db.relationship("Samples") # unused
     latitude = db.Column(DOUBLE_PRECISION)
     longitude = db.Column(DOUBLE_PRECISION)
